@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <template id="report_transaction_check_template">
+        <t t-call="web.external_layout">
+            <main>
+            <t t-foreach="docs" t-as="doc">
+                <div class="page">
+                    <h5 style="text-align:center;margin-bottom:15px;">Bordereau de versement</h5>
+                    <div>
+                        <p><strong>Magasin:</strong> <span t-esc="doc.magasin_name.name"/></p>
+                        <p><strong>Journal:</strong> <span t-esc="doc.date.strftime('%d/%m/%Y')"/></p>
+                    </div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>MODE DE PAIEMENT</th>
+                                <th>TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="payment_totals" t-value="{}"/>
+                            <t t-set="total_amount" t-value="0.0"/>
+                        <t t-foreach="docs" t-as="doc">
+                            <t t-foreach="doc.transaction_ids" t-as="line">
+                                <t t-set="method_name" t-value="line.payment_method_name"/>
+                                <t t-set="current_total" t-value="payment_totals.get(method_name, 0.0) + line.expected"/>
+                                <t t-set="payment_totals" t-value="dict(payment_totals, **{method_name: current_total})"/>
+                            </t>
+                        </t>
+
+                            <t t-set="counter" t-value="0"/>
+                            <t t-set="selected_payment_total" t-value="0.0"/>
+                    <tr t-foreach="payment_totals.items()" t-as="payment">
+                        <t t-if="counter &lt; 2">
+                            <td t-esc="payment[0]"/>
+                            <td t-esc="payment[1]"/>
+                            <t t-set="selected_payment_total" t-value="selected_payment_total + payment[1]"/>
+                            <t t-set="counter" t-value="counter + 1"/>
+                        </t>
+
+                    </tr>
+                            <tr>
+                                <td><strong>Paiement total</strong></td>
+                                <td t-esc="selected_payment_total"/>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+            </main>
+        </t>
+    </template>
+
+         <record id="transaction_check_pdf_report" model="ir.actions.report">
+            <field name="name">Print Pdf</field>
+            <field name="model">transaction.check</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">chichcorner_customization.report_transaction_check_template</field>
+            <field name="report_file">chichcorner_customization.report_transaction_check_template</field>
+            <field name="print_report_name">'Relevée'</field>
+            <field name="binding_model_id" eval="False"/>
+            <field name="binding_type">report</field>
+        </record>
+</odoo>

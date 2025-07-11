@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="Orderline" t-inherit="point_of_sale.Orderline" t-inherit-mode="extension">
+        <xpath expr="//li/div/div/span[hasclass('text-wrap')]" position="after">
+            <t t-if= "line.default_code">
+                <span class="text-wrap" t-esc="line.default_code"/>
+            </t>
+        </xpath>
+    </t>
+</templates>

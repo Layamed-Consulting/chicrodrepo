@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+
+        <record id="view_api_key_tree" model="ir.ui.view">
+            <field name="name">api.key.tree</field>
+            <field name="model">api.key</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="key"/>
+                    <field name="active"/>
+                    <field name="user_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_api_key_form" model="ir.ui.view">
+            <field name="name">api.key.form</field>
+            <field name="model">api.key</field>
+            <field name="arch" type="xml">
+                <form string="API Key">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="key"/>
+                            <field name="active"/>
+                            <field name="user_id"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Create Action -->
+        <record id="action_api_key" model="ir.actions.act_window">
+            <field name="name">API Keys</field>
+            <field name="res_model">api.key</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>
+        </record>
+
+        <!-- Create Menu Item -->
+        <menuitem id="api_key_menu"
+                  name="API Keys"
+                  parent="base.menu_users"
+                  action="action_api_key"
+                  sequence="90"/>
+
+    </data>
+</odoo>

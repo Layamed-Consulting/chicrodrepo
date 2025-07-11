@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <!-- Main Template -->
+        <template id="report_bon_de_sortie">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="chichcorner_customization.report_bon_de_sortie_document" t-lang="o._get_report_lang()"/>
+            </t>
+        </template>
+</odoo>

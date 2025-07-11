@@ -1,0 +1,46 @@
+<odoo>
+    <record id="view_transaction_cheque_tree" model="ir.ui.view">
+        <field name="name">black.list.transaction.cheque.tree</field>
+        <field name="model">black.list</field>
+        <field name="arch" type="xml">
+            <tree string="Transaction Cheque">
+                <field name="cin"/>
+                <field name="client_name"/>
+                <field name="commentaire"/>
+                <field name="status"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for Transaction Cheque -->
+    <record id="view_transaction_cheque_form" model="ir.ui.view">
+        <field name="name">black.list.transaction.cheque.form</field>
+        <field name="model">black.list</field>
+        <field name="arch" type="xml">
+            <form string="Transaction Cheque">
+                <sheet>
+                    <group>
+                        <field name="cin"/>
+                        <field name="client_name"/>
+                        <field name="commentaire"/>
+                        <field name="status"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <!-- Action for Transaction Cheque -->
+    <record id="action_transaction_cheque" model="ir.actions.act_window">
+        <field name="name">Transaction Cheque</field>
+        <field name="res_model">black.list</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_transaction_cheque_tree"/>
+        <field name="target">current</field>
+    </record>
+    <menuitem
+        id="menu_transaction_cheque"
+        name="Liste noire"
+        parent="point_of_sale.menu_point_root"
+        action="action_transaction_cheque"
+        sequence="98"/>
+</odoo>

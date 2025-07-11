@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('modal-footer-right')]" position="inside">
+            <button class="button icon btn btn-lg btn-success"
+                    t-on-click="downloadJournalReport"
+                    title="Download a report of all journal entries for the current PoS Session">
+                    Journal
+                    <i class="fa fa-download" role="img"/>
+            </button>
+        </xpath>
+    </t>
+
+</templates>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_bon_de_sortie_document">
+        <t t-call="web.html_container">
+            <t t-set="css" t-value="'/chichcorner_customization/static/src/css/bonsortie.css'"/>
+            <t t-call-assets="web.report_assets_common" t-js="false"/>
+            <link t-if="css" rel="stylesheet" href="/web/static/lib/bootstrap/css/bootstrap.css"/>
+            <link rel="stylesheet" t-href="css"/>
+            <t t-call="web.external_layout">
+                <t t-set="o" t-value="o.with_context(lang=o._get_report_lang())" />
+                <t t-set="partner" t-value="o.partner_id or (o.move_ids and o.move_ids[0].partner_id) or False"/>
+                <t t-set="address">
+                    <div name="div_outgoing_address">
+                        <div name="outgoing_delivery_address"
+                            t-if="o.should_print_delivery_address()">
+                            <span><strong>Adresse de livraison :</strong></span>
+                            <div t-field="o.move_ids[0].partner_id"
+                                t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
+                        </div>
+                    </div>
+                </t>
+                <t t-foreach="docs" t-as="doc">
+                    <div class="oe_structure">
+                        <h2 style="text-align: center; margin-top: 40px;margin-bottom: 20px;color:#D99D81;font-weight: bold;">Bon De Sortie</h2>
+                    </div>
+                    <div>
+                        <p><strong>Reference:</strong> <t t-esc="doc.name"/></p>
+                    </div>
+                    <div t-if="doc.state" class="col-auto" name="div_sched_date">
+                        <strong>Date d'expédition:</strong>
+                        <p t-if="doc.state == 'done'" t-field="doc.date_done"/>
+                        <p t-else="" t-field="doc.scheduled_date"/>
+                    </div>
+                    <table class="table table-sm table-bordered tablecustom" style="margin-top: 20px;">
+                        <thead>
+                            <tr>
+                                <th style="color: white;">Produit</th>
+                                <th style="color: white;">Quantité Commandée</th>
+                                <th style="color: white;">Quantité Livrée</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="total_ordered" t-value="0"/>
+                            <t t-set="total_delivered" t-value="0"/>
+                            <t t-foreach="doc.get_bon_de_sortie_data()" t-as="line">
+                                <tr>
+                                    <td><t t-esc="line['product']"/></td>
+                                    <td><t t-esc="line['quantity']"/> Unité(s)</td>
+                                    <td><t t-esc="line['delivered']"/> Unité(s)</td>
+                                </tr>
+                                <t t-set="total_ordered" t-value="total_ordered + line['quantity']"/>
+                                <t t-set="total_delivered" t-value="total_delivered + line['delivered']"/>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>Total</strong></td>
+                                <td><strong><t t-esc="total_ordered"/> Unité(s)</strong></td>
+                                <td><strong><t t-esc="total_delivered"/> Unité(s)</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div style="margin-top: 80px;">
+                        <p><strong>Signature:</strong></p>
+                        <table class="table table-bordered tablecustom" style="width: 100%;margin-top: 20px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;width: 25%;color: white;">Demandeur</th>
+                                    <th style="text-align: center;width: 25%;color: white;">Responsable stock</th>
+                                    <th style="text-align: center;width: 25%;color: white;">Manager</th>
+                                    <th style="text-align: center;width: 25%;color: white;">Destinataire</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="table table-bordered tablecustom" style="width: 100%; margin-top:0px">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;width: 33.33%;color: white;">Directeur Logistique</th>
+                                    <th style="text-align: center;width: 33.33%;color: white;">Directeur BU</th>
+                                    <th style="text-align: center;width: 33.33%;color: white;">D.G</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                    <td style="text-align: center; height: 80px;"><br/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

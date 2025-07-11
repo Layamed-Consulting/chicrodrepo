@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="point_of_sale.inherit_OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+       <xpath expr="//ReceiptHeader" position="after">
+            <span style="font-size:9px;text-align:center;"><b>Réf Ticket:</b> <t t-esc="props.data.name" /></span>
+        </xpath>
+        <xpath expr="//OrderWidget" position="replace">
+            <div class="pos-receipt-product-table">
+            <table style="border: 1px solid; width: 100%; text-align: center; font-size: 9.5px;" class="table">
+                <!-- Table Header -->
+                <tr style="border: 1px solid;">
+                    <td style="border: 1px solid;font-weight: bold">Produit</td>
+                    <td style="border: 1px solid;font-weight: bold">Description</td> <!-- Adjusted width and height for Product column -->
+                    <td style="border: 1px solid;font-weight: bold">Qty</td>
+                    <td style="border: 1px solid;font-weight: bold">PU</td>
+                    <td style="border: 1px solid;font-weight: bold">PTTC</td>
+                </tr>
+
+                <!-- Table Rows -->
+                <t t-foreach="props.data.orderlines" t-as="line" t-key="line_index">
+                    <tr style="border: 1px solid;">
+                        <td style="border: 1px solid;padding:1px;font-weight: bold;">
+                            <t t-if="line.default_code">
+                                <t t-esc="line.default_code" />
+                            </t>
+                            <t t-else=""> </t>
+                        </td> <!-- New column for default_code -->
+                        <td style="border: 1px solid;padding:1px;font-weight: bold;width:60%;height:auto;"> <!-- Adjusted width and height for Product column -->
+                            <t t-if="line.productName">
+                                <t t-set="productName" t-value="line.productName" />
+                                <t t-if="productName.indexOf(' ') != -1">
+                                    <t t-set="firstWord" t-value="productName.substring(0, productName.indexOf(' '))" />
+                                    <t t-if="firstWord.length >= 6">
+                                        <!-- Remove the first word if it's >= 6 characters -->
+                                        <t t-esc="productName.substring(productName.indexOf(' ') + 1)" />
+                                    </t>
+                                    <t t-else="">
+                                        <t t-esc="productName" />
+                                    </t>
+                                </t>
+                                <t t-else="">
+                                    <t t-esc="line.productName" />
+                                </t>
+                            </t>
+                            <!--
+                            <t t-if="line.productName">
+                                <t t-set="productName" t-value="line.productName" />
+                                <t t-if="productName.indexOf(' ') != -1">
+                                    <t t-esc="productName.substring(productName.indexOf(' ') + 1)" />
+                                </t>
+                                <t t-else="">
+                                    <t t-esc="productName" />
+                                </t>
+                            </t>
+                            -->
+                            <t t-if="line.discount != 0">
+                                <div class="pos-receipt-left-padding" style="font-size:10px;padding:1px;font-weight: bold;">
+                                    Disc: <t t-esc="line.discount"/>%
+                                </div>
+                            </t>
+                            <t t-if="line.customerNote">
+                                <div class="customer-note p-1 rounded text-break text-bg-warning text-warning bg-opacity-25" style="font-size:8px;">
+                                    <i class="fa fa-sticky-note me-1" role="img" aria-label="Customer Note" title="Customer Note"/>
+                                    <t t-esc="line.customerNote"/>
+                                </div>
+                            </t>
+                        </td>
+                        <td style="border: 1px solid;padding:1px;font-weight: bold;">
+                            <t t-if="line.default_code">
+                                <t t-esc="line.qty" />
+                            </t>
+                            <t t-else="">
+                                <t t-set="line.qty" t-value="0"/>
+                            </t>
+                            </td>
+                        <td style="border: 1px solid;padding:1px;font-weight: bold;">
+                            <s t-esc="line.oldUnitPrice" t-if="line.oldUnitPrice" />
+                            <t t-esc="line.unitPrice"/>
+                        </td>
+                        <td style="border: 1px solid;padding:1px;font-weight: bold;"><t t-esc="line.price" /></td>
+                    </tr>
+                </t>
+                <tr style="border: 1px solid;font-weight: bold;">
+                    <td style="border: 1px solid;padding:1px;text-align: center;font-weight: bold;">TOTAUX</td>
+                    <td style="border: 1px solid;padding:1px;text-align: center;font-weight: bold;"></td>
+                    <td style="border: 1px solid;padding:1px;text-align: center;font-weight: bold;">
+                        <t t-esc="props.data.sum" />
+                    </td>
+                    <td style="border: 1px solid;padding:1px;text-align: center;font-weight: bold;"></td>
+                    <td style="padding:1px;text-align: center;font-weight: bold;" t-esc="props.formatCurrency(props.data.amount_total)" class="pos-receipt-right-align" />
+                </tr>
+            </table>
+                <span style="font-weight: bold; font-size:12px; margin-top: 5px;display: block; text-align: center;" >
+                    Montant Total DH TTC: <t t-esc="props.formatCurrency(props.data.amount_total)"/> </span>
+        </div>
+        </xpath>
+        <xpath expr="//div[contains(@class, 'pos-receipt-right-align') and contains(text(), '--------')]" position="replace">
+        </xpath>
+         <xpath expr="//div[contains(@class, 'pos-receipt-amount') and contains(text(), 'TOTAL')]" position="replace">
+        </xpath>
+        <xpath expr="//div[contains(@class, 'pos-receipt-amount receipt-change mt-2') and contains(text(), 'CHANGE')]" position="replace">
+        </xpath>
+        <xpath expr="//div[@class='pos-receipt-taxes']" position="attributes">
+            <attribute name="style">margin-top: 10px;</attribute>
+        </xpath>
+        <xpath expr="//div[@class='pos-receipt-taxes']" position="replace">
+            <div class="pos-receipt-taxes" style="display: flex; flex-direction: column; margin-top: 20px;">
+                <t t-foreach="props.data.tax_details" t-as="tax" t-key="tax.tax.id">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <span style="font-weight: bold;font-size:9px;">TVA</span>
+                        <span style="font-weight: bold;font-size:9px;"><t t-esc="tax.tax.amount"/>%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <span style="font-weight: bold;font-size:9px;">Montant TVA</span>
+                        <span style="font-weight: bold;font-size:9px;"><t t-esc="props.formatCurrency(tax.amount, false)"/> dh</span>
+                    </div>
+                </t>
+            </div>
+        </xpath>
+    </t>
+</templates>

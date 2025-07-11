@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <record id="product_normal_form_view_inherit_chic" model="ir.ui.view">
+            <field name="name">product.product.form.inherit.cc</field>
+            <field name="model">product.product</field>
+            <field name="priority" eval ="99"/>
+            <field name="inherit_id" ref="product.product_normal_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='barcode']" position="after">
+                    <field name="collection"/>
+                    <field name="style"/>
+                    <field name="origine_id"/>
+                    <field name="hs_code"/>
+                    <field name="composition"/>
+                </xpath>
+                <xpath expr="//notebook" position="inside">
+                    <page string="Lot de fabrication">
+                        <field name="chic_lot_ids">
+                            <tree editable="top" default_order="date_arrivage desc">
+                                <field name="name"/>
+                                <field name="date_arrivage"/>
+                                <field name="date_peremption"/>
+                            </tree>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        
+    </data>
+</odoo>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_purchaseorder_document_inherit" inherit_id="purchase.report_purchaseorder_document">
+        <xpath expr="//table[contains(@class, 'table-sm') and contains(@class, 'o_main_table')]" position="attributes">
+            <attribute name="style">font-size: 10px;</attribute>
+        </xpath>
+        <xpath expr="//table[contains(@class, 'table') and contains(@class, 'table-sm table-borderless')]" position="attributes">
+            <attribute name="style">font-size: 10px;</attribute>
+        </xpath>
+        <xpath expr="//div[@id='total']/.. | //div[@id='total']/following-sibling::*[1]" position="after">
+            <div class="mt-4">
+                <strong style="font-size: 10px;color:black" >Arrêté la présente à la somme :</strong>
+                <p style="font-size: 10px;">
+                    <t t-esc="o.currency_id.amount_to_text(o.amount_total).capitalize()"/>
+                    <!--
+                    <t> DHS et </t>
+                    <t t-esc="int((o.amount_total - int(o.amount_total)) * 100)"/> centimes
+                    -->
+                </p>
+
+                <strong style="font-size: 10px;color:black">conditions de paiement:</strong>
+                <p t-field="o.payment_term_id.name" style="font-size: 10px;"/>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>
+
+

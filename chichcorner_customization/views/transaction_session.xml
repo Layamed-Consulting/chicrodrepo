@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_transaction_session_form" model="ir.ui.view">
+        <field name="name">transaction.session.form</field>
+        <field name="model">transaction.session</field>
+        <field name="arch" type="xml">
+            <form string="Transaction Session">
+                <sheet>
+                    <group>
+                        <field name="session_id"/>
+                        <field name="payment_method_name"/>
+                        <field name="expected"/>
+                        <field name="counted_cash"/>
+                        <field name="payment_differences"/>
+                        <field name="cashier_name"/>
+                        <field name="store_name"/>
+                        <field name="close_time"/>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_transaction_session_tree" model="ir.ui.view">
+        <field name="name">transaction.session.tree</field>
+        <field name="model">transaction.session</field>
+        <field name="arch" type="xml">
+            <tree string="Transaction Sessions">
+                <field name="session_id"/>
+                <field name="payment_method_name"/>
+                <field name="expected"/>
+                <field name="counted_cash"/>
+                <field name="payment_differences"/>
+                <field name="cashier_name"/>
+                <field name="store_name"/>
+                <field name="close_time"/>
+                <field name="notes"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_transaction_session" model="ir.actions.act_window">
+        <field name="name">Transaction Sessions</field>
+        <field name="res_model">transaction.session</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!--
+    <menuitem id="menu_transaction_session"
+              name="Transaction Sessions"
+              parent="point_of_sale.menu_point_root"
+              action="action_transaction_session"
+              sequence="1001"
+    />
+    -->
+</odoo>

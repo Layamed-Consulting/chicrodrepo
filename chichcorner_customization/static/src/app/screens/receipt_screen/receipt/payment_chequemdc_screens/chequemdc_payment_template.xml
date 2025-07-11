@@ -1,0 +1,71 @@
+<templates id="template" xml:space="preserve">
+   <t t-name="chichcorner_customization.ChequemdcPaymentForm" owl="1">
+       <div class="popup custom_popup">
+           <div class="modal-header justify-content-center">
+               <h2 class="modal-title">
+                   <t t-esc="props.title"/>
+               </h2>
+           </div>
+           <div class="modal-body custom-form-view">
+               <form>
+                   <div class="col d-flex justify-content-between align-items-center p-3">
+                       <label class="form-label label" for="identite_number">CIN</label>
+                       <input class="w-75 form-control" t-model="state.identite_number" name="identite_number" t-on-input="onIdentiteNumberInput" placeholder="Identite number"/>
+                   </div>
+                   <div>
+                   <span t-if="state.isInBlacklist" class="text-danger mt-2"> NB: This client exists in the blacklist.</span>
+                    </div>
+                   <div class="col d-flex justify-content-between align-items-center p-3">
+                       <label class="form-label label" for="cheque_number">Cheque Number</label>
+                       <input class="w-75 form-control" t-model="state.cheque_number" name="cheque_number" t-on-input="validateFields" placeholder="Check number"/>
+                   </div>
+
+                   <!-- New Date Field -->
+                   <div class="col d-flex justify-content-between align-items-center p-3">
+                       <label class="form-label label" for="cheque_date">Cheque Date</label>
+                       <input type="date" class="w-75 form-control" t-model="state.cheque_date" name="cheque_date" t-on-input="validateFields"/>
+                   </div>
+
+
+                   <div class="col d-flex justify-content-between align-items-center p-3">
+                       <label class="form-label label" for="banque_name">Banque Name</label>
+                       <select class="w-75 form-control" t-model="state.banque" name="banque_name" t-on-input="validateFields" placeholder="Select bank name">
+                           <option value="">Autre</option>
+                           <option value="attijari_wafabank">ATTIJARI WAFABANK</option>
+                           <option value="SGMB">Socièté Général</option>
+                           <option value="LPB">AL BARID BANK</option>
+                           <option value="banque_populaire">BANQUE POPULAIRE</option>
+                           <option value="BCP">BANQUE CENTRALE POPULAIRE</option>
+                           <option value="BMCE">BANK OF AFRICA</option>
+                           <option value="BMCI">BANQUE MAROCAINE POUR LE COMMERCE ET L’INDUSTRIE</option>
+                           <option value="CADM">CREDIT AGRICOLE DU MAROC</option>
+                           <option value="CFG">CFG BANK</option>
+                           <option value="CDM">CREDIT DU MAROC</option>
+                           <option value="CITI">CITIBANK MAGHREB</option>
+                           <option value="ABM">ARAB BANK MAROC</option>
+                           <option value="CIH">CREDIT IMMOBILIER ET HOTELIER</option>
+                       </select>
+                   </div>
+                   <div>
+                       <span t-if="state.showErrors &amp;&amp; state.isFieldEmpty" class="text-danger mt-2"> All fields are required to confirm the cheque payment!</span>
+                   </div>
+                   <!--
+                   <div class="col d-flex justify-content-between align-items-center p-3">
+                       <label class="form-label label" for="status">Status</label>
+                       <input class="w-75 form-control" t-att-value="state.status" name="status" readonly="readonly" disabled="disabled"/>
+                   </div>
+                   -->
+               </form>
+           </div>
+
+    <div class="footer footer-flex modal-footer justify-content-end">
+                <div class="button cancel btn btn-lg btn-primary" t-on-click="cancel">Cancel
+                    <t t-esc="props.closePopup"/>
+                </div>
+                <div class="button confirm btn btn-lg btn-primary" t-on-click="confirm" t-att-disabled="!state.isFormValid">Confirm
+                    <t t-esc="props.confirmText"/>
+                </div>
+            </div>
+       </div>
+   </t>
+</templates>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!--
+    <template id="custom_payment_screen_methods" t-inherit="point_of_sale.PaymentScreenMethods" t-inherit-mode="extension">
+        <xpath expr="//PaymentScreenPaymentLines" position="before">
+            <div t-if="selectedPaymentLine.payment_method.name === 'Carte Bancaire'">
+                <label for="stan" class="mt-3">STAN (System Trace Audit Number)</label>
+                <input id="stan" name="stan" type="text" t-model="selectedPaymentLine.stan" required="true"
+                       placeholder="Enter STAN" class="form-control" />
+            </div>
+        </xpath>
+    </template>
+    -->
+</odoo>

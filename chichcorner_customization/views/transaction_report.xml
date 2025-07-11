@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- form -->
+    <record id="view_transaction_check_form" model="ir.ui.view">
+        <field name="name">transaction.check.form</field>
+        <field name="model">transaction.check</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="print_pdf_report" type="object" class="btn-primary" string="Print PDF" />
+                </header>
+                <sheet>
+                    <group>
+                        <field name="date"/>
+                        <field name="magasin_name"/>
+                        <field name="status"/>
+                    </group>
+                    <group string="Relevés">
+                        <field name="transaction_ids">
+                            <tree editable="bottom">
+                                <field name="session_id"/>
+                                <field name="payment_method_name" string="Mode de paiment"/>
+                                <field name="expected" readonly="1" string="Chiffre d'affaires" sum="Total"/>
+                                <field name="counted_cash" string="Compté" sum="Total"/>
+                                <field name="payment_differences" string="Différence"/>
+                                <field name="store_name" string="Nom du Magasin"/>
+                                <field name="close_time" string="Heure de clôture"/>
+                                <field name="cashier_name" string="Nom du caissier"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <group class="oe_subtotal_footer">
+                        <field name="total_expected" string="Total Chiffre d'affaires"/>
+                        <field name="total_counted" string="Total Compté"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                        <field name="message_follower_ids" groups="base.group_user"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                </div>
+
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree -->
+    <record id="view_transaction_check_tree" model="ir.ui.view">
+        <field name="name">transaction.check.tree</field>
+        <field name="model">transaction.check</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date"/>
+                <field name="magasin_name"/>
+                <field name="status"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- search view -->
+
+    <record id="view_transaction_check_search" model="ir.ui.view">
+        <field name="name">transaction.check.search</field>
+        <field name="model">transaction.check</field>
+        <field name="arch" type="xml">
+            <search>
+                <filter string="Date" name="filter_date" domain="[]">
+                    <field name="date"/>
+                </filter>
+                <filter string="Magasin" name="filter_magasin" domain="[]">
+                    <field name="magasin_name"/>
+                </filter>
+                <filter string="State: Done" name="filter_state_done" domain="[['status', '=', 'done']]"/>
+                <filter string="State: Comptabilisé" name="filter_state_comptabilise" domain="[['status', '=', 'comptabilisé']]"/>
+                <filter string="State: Concrétisé" name="filter_state_concretise" domain="[['status', '=', 'concrétiser']]"/>
+                <group expand="1" string="Group By">
+                    <filter string="Date" name="group_by_date" context="{'group_by': 'date'}"/>
+                    <filter string="Magasin" name="group_by_magasin" context="{'group_by': 'magasin_name'}"/>
+                    <filter string="State" name="group_by_status" context="{'group_by': 'status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <!--  -->
+    <!-- acction -->
+    <record id="action_transaction_check" model="ir.actions.act_window">
+        <field name="name">Relevés</field>
+        <field name="res_model">transaction.check</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+    </record>
+
+
+    <!-- Menu Items -->
+    <menuitem id="menu_check_transaction"
+              name="Relevée"
+              parent="point_of_sale.menu_point_of_sale"
+              sequence="101"
+              action="action_transaction_check"/>
+</odoo>

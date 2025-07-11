@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="purchase_order_form_inherit_qty" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.qty</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@class='oe_subtotal_footer']" position="before">
+                <group class="oe_subtotal_footer" style="margin-top:0px;background-color:#ECEBDE;border-radius: 5px;">
+                    <field name="total_product_qty" readonly="1" string="Qté totale commandée" />
+                    <field name="total_qty_received" readonly="1" string="Qté totale reçue"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

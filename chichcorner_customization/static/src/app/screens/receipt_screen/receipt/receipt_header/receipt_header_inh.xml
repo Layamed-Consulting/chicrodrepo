@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pos_receipt_screen.receiptscreen" t-inherit="point_of_sale.ReceiptHeader" t-inherit-mode="extension">
+        <xpath expr="//div[@class='fw-bolder' and contains(@t-if, 'props.data.trackingNumber')]" position="replace"/>
+        <!--
+        <xpath expr="//img[@class='pos-receipt-logo']" position="attributes">
+            <attribute name="style">display:block; margin-left:1px; text-align:left;</attribute>
+        </xpath>
+        -->
+        <!--
+        <xpath expr="//div[@class='pos-receipt-contact']" position="after">
+            <t t-if="props.data.partner">
+                <div style="font-size:12px; text-align:left;">
+                    <div style="font-size:10px;text-align:left;margin-top:0px;">Client : <b><t t-esc="props.data.partner.name"/></b></div>
+
+                    <t t-if="props.data.default_code">
+                        <div style="font-weight: bold; text-align: center;">correct Code: <t t-esc="props.data.default_code" /></div>
+                    </t>
+                </div>
+            </t>
+            <br/>
+            <br/>
+        </xpath>
+        -->
+        <!-- modified-->
+        <!--
+        <xpath expr="//div[@class='pos-receipt-contact']" position="attributes">
+            <attribute name="style">text-align:left;font-size:8px;</attribute>
+        </xpath>
+        -->
+
+        <xpath expr="//div[@class='cashier']/div[text() = '--------------------------------']" position="replace"/>
+
+        <xpath expr="//div[@class='cashier']" position="replace" />
+
+        <xpath expr="//div[@class='pos-receipt-contact']" position="after">
+            <div class="pos-receipt-header" style="display: flex; justify-content: space-between;margin-top:30px;">
+                <!-- Colonne de gauche -->
+                <div class="pos-receipt-left" style="text-align: left;font-size:11px;">
+                    <div><b>Vendeur:</b> <t t-esc="props.data.cashier" /></div>
+                    <t t-if="props.data.partner">
+                        <div><b>Client:</b> <t t-esc="props.data.partner.name" /></div>
+                    </t>
+                </div>
+                <!-- Colonne de droite -->
+               <div class="pos-receipt-right" style="text-align: left; font-size:11px;">
+                    <t t-if="props.data.config_name">
+                        <span><b>Magasin:</b> <t t-esc="props.data.config_name" /></span>
+                    </t>
+                    <br/>
+                    <t t-if="props.data.order_date">
+                        <span><b>Date:</b> <t t-esc="props.data.order_date" /></span>
+                    </t>
+                    <br/>
+                    <t t-if="props.data.order_time">
+                        <span><b>Heure:</b> <t t-esc="props.data.order_time" /></span>
+                    </t>
+               </div>
+
+            </div>
+        </xpath>
+
+
+        <!--
+        <xpath expr="//t[@t-set='line']" position="after">
+            <div t-if="line.default_code" class="product-default-code">
+                <small>Code: <t t-esc="line.default_code" /></small>
+            </div>
+        </xpath>
+        -->
+    </t>
+</templates>

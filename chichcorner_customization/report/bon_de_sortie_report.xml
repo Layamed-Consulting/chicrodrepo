@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_report_picking" model="ir.actions.report">
+            <field name="name">Bon De Sortie</field>
+            <field name="model">stock.picking</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">chichcorner_customization.report_bon_de_sortie</field>
+            <field name="print_report_name">'Bon De Sortie - %s - %s' % (object.partner_id.name or '', object.name)</field>
+            <field name="binding_model_id" ref="stock.model_stock_picking"/>
+            <field name="binding_view_types">form</field>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>

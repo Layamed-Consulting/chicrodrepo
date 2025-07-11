@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="ir_cron_auto_process_website_orders" model="ir.cron">
+            <field name="name">Auto Process Website Orders</field>
+            <field name="model_id" ref="model_stock_website_order"/>
+            <field name="state">code</field>
+            <field name="code">env['stock.website.order'].auto_process_initial_orders()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active"/>
+            <field name="doall">False</field>
+        </record>
+    </data>
+</odoo>

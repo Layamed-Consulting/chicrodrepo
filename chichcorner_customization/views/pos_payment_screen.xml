@@ -1,0 +1,36 @@
+<odoo>
+    <data>
+        <record id="view_pos_payment_form_inherit_stan" model="ir.ui.view">
+            <field name="name">pos.payment.view.inherit.stan</field>
+            <field name="model">pos.payment</field>
+            <field name="inherit_id" ref="point_of_sale.view_pos_payment_form"/>
+            <field name="arch" type="xml">
+               <xpath expr="//field[@name='session_id']" position="after">
+                    <field name="show_stan" invisible="1"/>
+                    <field name="show_cheque_fields" invisible="1"/>
+                    <field name="show_date" invisible="1"/>
+                    <field name="show_identite" invisible="1"/>
+
+                   <field name="show_vir_number" invisible="1"/>
+                    <field name="show_num_client" invisible="1"/>
+                    <field name="show_vir_montant" invisible="1"/>
+                    <field name="show_ref_cmd" invisible="1"/>
+                    <field name="show_date_commande" invisible="1"/>
+
+
+                    <field name="stan" invisible="not show_stan"/>
+                    <field name="identite_number" invisible="not show_identite"/>
+                    <field name="cheque_number" invisible="not show_cheque_fields"/>
+                    <field name="banque" invisible="not show_cheque_fields"/>
+                    <field name="cheque_date" invisible="not show_date"/>
+
+                    <field name="vir_number" invisible="not show_vir_number"/>
+                    <field name="num_client" invisible="not show_num_client"/>
+                    <field name="vir_montant" invisible="not show_vir_montant"/>
+                    <field name="ref_cmd" invisible="not show_ref_cmd"/>
+                    <field name="date_commande" invisible="not show_date_commande"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

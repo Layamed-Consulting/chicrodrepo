@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Simple Cron Job: Update Stock Disponible every hour -->
+        <record id="cron_update_stock_disponible" model="ir.cron">
+            <field name="name">Update Stock Disponible</field>
+            <field name="model_id" ref="model_stock_website_order_line"/>
+            <field name="state">code</field>
+            <field name="code">env['stock.website.order.line'].cron_update_stock_disponible()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="doall" eval="False"/>
+        </record>
+    </data>
+</odoo>

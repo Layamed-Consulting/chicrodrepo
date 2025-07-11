@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+         <record id="paperformatnewpaper" model="report.paperformat">
+            <field name="name">new label 2 x 7 </field>
+            <field name="default" eval="True" />
+            <field name="format">custom</field>
+            <field name="page_height">100</field>
+            <field name="page_width">100</field>
+            <field name="orientation">Landscape</field>
+            <field name="margin_top">0</field>
+            <field name="margin_bottom">0</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            <field name="disable_shrinking" eval="True"/>
+            <field name="dpi">96</field>
+        </record>
+
+        <record id="product.report_product_template_label_2x7" model="ir.actions.report">
+            <field name="paperformat_id" ref="chichcorner_customization.paperformatnewpaper"/>
+           <field name="report_name">product.report_producttemplatelabel_dymo</field>
+        </record>
+    </data>
+</odoo>
+

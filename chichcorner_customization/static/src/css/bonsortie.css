@@ -1,0 +1,7 @@
+.tablecustom thead > tr > th{
+    background-color: #1b8dcd;
+    color: #ffffff;
+}
+.tablecustom{
+    border: .5px solid black;
+}

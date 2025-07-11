@@ -1,0 +1,68 @@
+<templates id="template" xml:space="preserve">
+
+   <t t-name="chichcorner_customization.VirementPaymentForm" owl="1">
+       <div class="popup custom_popup">
+           <div class="modal-header justify-content-center">
+               <h2 class="modal-title">
+                   <t t-esc="props.title"/>
+               </h2>
+           </div>
+
+           <div class="modal-body custom-form-view">
+               <form class="container">
+                   <div class="row mb-3">
+                       <label class="col-4 col-form-label text-end" for="vir_number">Numéro du virement</label>
+                       <div class="col-8">
+                           <input type="text" class="form-control" t-model="state.vir_number" name="vir_number" t-on-input="validateFields" placeholder="Numéro du virement"/>
+                       </div>
+                   </div>
+
+                   <div class="row mb-3">
+                       <label class="col-4 col-form-label text-end" for="num_client">Nom du client</label>
+                       <div class="col-8">
+                           <input type="text" class="form-control" t-model="state.num_client" name="num_client" t-on-input="validateFields" placeholder="Nom du client"/>
+                       </div>
+                   </div>
+
+                   <div class="row mb-3">
+                       <label class="col-4 col-form-label text-end" for="vir_montant">Montant du virement</label>
+                       <div class="col-8">
+                           <input type="text" class="form-control" t-model="state.vir_montant" name="vir_montant" t-on-input="validateFields" placeholder="Montant"/>
+                       </div>
+                   </div>
+
+                   <div class="row mb-3">
+                       <label class="col-4 col-form-label text-end" for="ref_cmd">Référence de la commande</label>
+                       <div class="col-8">
+                           <input type="text" class="form-control" t-att-value="state.ref_cmd" name="ref_cmd" placeholder="Référence de la commande"/>
+                       </div>
+                   </div>
+
+                   <div class="row mb-3">
+                       <label class="col-4 col-form-label text-end" for="date_commande">Date de la transaction</label>
+                       <div class="col-8">
+                           <input type="date" class="form-control" t-model="state.date_commande" name="date_commande" t-on-input="validateFields" placeholder="Date de la transaction"/>
+                       </div>
+                   </div>
+
+                   <div class="row">
+                       <div class="col text-center">
+                           <span t-if="state.showErrors &amp;&amp; state.isFieldEmpty" class="text-danger mt-2">
+                               Veuillez vous assurer que tous les champs de paiement sont correctement remplis
+                           </span>
+                       </div>
+                   </div>
+               </form>
+           </div>
+
+    <div class="footer footer-flex modal-footer justify-content-end">
+                <div class="button cancel btn btn-lg btn-primary" t-on-click="cancel">Cancel
+                    <t t-esc="props.closePopup"/>
+                </div>
+                <div class="button confirm btn btn-lg btn-primary" t-on-click="confirm" t-att-disabled="!state.isFormValid">Confirm
+                    <t t-esc="props.confirmText"/>
+                </div>
+            </div></div>
+   </t>
+
+</templates>

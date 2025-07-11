@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <template id="report_simple_label4x7_with_price_only" inherit_id="product.report_simple_label4x7">
+            <xpath expr="//div[@class='o_label_name']" position="replace">
+            </xpath>
+            <xpath expr="//div[@class='text-center o_label_small_barcode']" position="replace">
+            </xpath>
+            <xpath expr="//div[@class='text-end']" position="replace">
+                <div class="text-center" style="font-size:10px;height:10px;">
+                    <strong class="o_label_price_medium" style="font-size: 10px;"
+                            t-out="pricelist._get_product_price(product, 1, pricelist.currency_id or product.currency_id)"
+                            t-options="{'widget': 'monetary', 'display_currency': pricelist.currency_id or product.currency_id, 'label_price': True}"/>
+                </div>
+            </xpath>
+        </template>
+
+        <template id="report_simple_label_dymo_inherit" inherit_id="product.report_simple_label_dymo">
+            <xpath expr="//div[contains(@class, 'o_label_small_barcode')]" position="attributes">
+                <attribute name="style">margin-top:5.5px;</attribute>
+            </xpath>
+            <xpath expr="//div[@class = 'o_label_name' and @style='height:1.7em;background-color: transparent;']" position="attributes">
+                <attribute name="style">font-size: 9px;height:14px;</attribute>
+            </xpath>
+            <xpath expr="//div[@class='o_label_name' and @style='line-height: 100%;background-color: transparent;padding-top: 1px;']" position="attributes">
+                <attribute name="style">font-size:9px;height:14px;color:black</attribute>
+            </xpath>
+            <xpath expr="//strong[contains(@class, 'o_label_price_small')]" position="replace"/>
+            <xpath expr="//div[contains(@class, 'o_label_left_column')]" position="replace">
+                    <strong style="font-size: 12px;" class="o_label_price_small" t-out="pricelist._get_product_price(product, 1, pricelist.currency_id or product.currency_id)" t-options="{'widget': 'monetary', 'display_currency': pricelist.currency_id or product.currency_id, 'label_price': True}"/>
+            </xpath>
+           <!--
+            <xpath expr="//div[@class='o_label_left_column']/small" position="replace">
+                <small class="text-nowrap" t-field="product.detailed_type" style="font-size: 5px;margin-bottom: 5px;"/>
+            </xpath> -->
+
+
+        </template>
+
+        <!--
+        <template id="report_productlabel_single_page" inherit_id="product.report_productlabel">
+            <xpath expr="//div[@class='o_label_sheet']//t[t-foreach='range(page_numbers)']" position="attributes">
+                <attribute name="t-foreach">range(1)</attribute>
+            </xpath>
+        </template>
+        -->
+
+
+        <template id="report_producttemplatelabel2x7_inherit" inherit_id="product.report_producttemplatelabel2x7">
+            <xpath expr="//t[@t-set='columns']" position="replace"/>
+            <xpath expr="//t[@t-set='rows']" position="replace"/>
+        </template>
+
+        <!-- change format of 2*7
+        <template id="report_productlabel_inherit" inherit_id="product.report_productlabel">
+            <xpath expr="//t[t-if='columns and rows']" position="replace">
+                <t t-set="padding_page" t-value="'padding: 14mm 3mm'"/>
+                <t t-set="report_to_call" t-value="'2x7'"/>
+            </xpath>
+        </template>
+
+
+
+
+        <template id="report_simple_label2x7_inherit" inherit_id="product.report_simple_label2x7">
+            <xpath expr="//t[@t-set='table_style']" position="attributes">
+                <attribute name="t-value">'width:45mm;height:25mm;margin:0;padding:0;'</attribute>
+            </xpath>
+            <xpath expr="//div[@class='o_label_full']" position="attributes">
+                <attribute name="style">font-size: 5px;color:red;</attribute>
+            </xpath>
+            <xpath expr="//div[@class='o_label_name']" position="attributes">
+                <attribute name="style">font-size: 5px;color:red;</attribute>
+            </xpath>
+            <xpath expr="//span[@class='text-nowrap']" position="attributes">
+                <attribute name="style">font-size: 5px;color:red;</attribute>
+            </xpath>
+            <xpath expr="//div[@class='o_label_extra_data']" position="attributes">
+                <attribute name="style">font-size: 5px;color:red;</attribute>
+            </xpath>
+            <xpath expr="//strong[@class='o_label_price']" position="attributes">
+                <attribute name="style">font-size: 5px;color:red;</attribute>
+            </xpath>
+        </template>
+         -->
+        <!-- template of 4*7
+
+        <template id="report_producttemplatelabel2x7_inherit" inherit_id="product.report_producttemplatelabel2x7">
+            <xpath expr="//t[@t-set='columns']" position="replace"/>
+            <xpath expr="//t[@t-set='rows']" position="replace" />
+        </template>
+
+        <template id="report_productlabel_inherit" inherit_id="product.report_productlabel">
+            <xpath expr="//t[@t-if='columns == 4 and rows == 7']" position="replace"/>
+        </template>-->
+
+    </data>
+</odoo>

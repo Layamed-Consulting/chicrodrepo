@@ -1,0 +1,524 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- <template id="external_layout_standard_inherit_akwa" inherit_id="web.external_layout_standard">
+            <div t-attf-class="header o_company_#{company.id}_layout" position="replace"> 
+            </div>
+            <div t-attf-class="footer o_standard_footer o_company_#{company.id}_layout" position="replace"> 
+            </div>
+        </template> -->
+
+        <record id="fiche_reservation_report" model="ir.actions.report">
+            <field name="name">Fiche de réservation</field>
+            <field name="model">property.sale</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">real_estate_extend.report_main_fiche_reservation</field>
+            <field name="report_file">real_estate_extend.report_main_fiche_reservation</field>
+            <field name="binding_type">report</field>
+            <field name="binding_model_id" ref="real_estate_management.model_property_sale"/>
+        </record>
+
+        <template id="report_main_fiche_reservation" >
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-set="lang" t-value="fr_FR"/>
+                    <t t-set="company" t-value="env.user.company_id"/>
+                    <t t-call="real_estate_extend.report_document_fiche_reservation" t-company="company" t-lang="lang"/>
+                </t>
+            </t>
+        </template>
+
+        <template id="report_document_fiche_reservation">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    
+                    <div class="row col-12">
+                        <div class="col-4"><img t-if="o.property_id.projet_id.logo" t-att-src="image_data_uri(o.property_id.projet_id.logo)" style="max-height: 150px" alt="Logo"/></div>
+                        <div class="col-4"/>
+                        <div class="col-4">
+                            <table style="border: 0pt solid black">
+                                <tr>
+                                    <td>
+                                        <span t-esc="company.name.upper()" style="color:#48639a; font-family: Microsoft Sans Serif; font-size:14pt"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span style="color:#5486a2; font-family: Microsoft Sans Serif; font-size:14pt">
+                                            PROJET: <span t-if="o.property_id.projet_id" t-esc="o.property_id.projet_id.name.upper()" style="color:#5486a2"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span style="color:#5486a2; font-family: Microsoft Sans Serif; font-size:14pt">
+                                            ZONE: <span t-if="o.property_id.projet_id" t-esc="o.property_id.projet_id.name.upper()"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span style="color:#5486a2; font-family: Microsoft Sans Serif; font-size:14pt">
+                                            TEL: 
+                                            <t t-if="o.property_id.projet_id and o.property_id.projet_id.telephone1"> <span style="color:#5486a2" t-esc="o.property_id.projet_id.telephone1"/> <br/> </t>
+                                            <t t-if="o.property_id.projet_id and o.property_id.projet_id.telephone2"> <span style="margin-left:38pt; color:#5486a2" t-esc="o.property_id.projet_id.telephone2"/> </t>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                      
+                    </div>
+
+                    <table style="width:100%">
+                        <tr>
+                            <td style="width:15%"/>
+                            <td style="width:30%">
+                                <br/><br/>
+                                <h4 style="color:#111085; font-family: Trebuchet MS;float: left">
+                                    Fiche de réservation <br/>
+                                    N° <span t-esc="o.name" style="color:#111085; font-family: Trebuchet MS"/>
+                                </h4>
+                            </td>
+                            <td/>
+                        </tr>
+                    </table>
+
+                    <table style="width:100%">
+                        <tr>
+                            <td style="width:25%">
+                                <span style="color:#111085;font-family: Trebuchet MS; font-size:16pt">Dossier N°: </span>
+                            </td>
+                            <td>
+                                <span t-field="o.numero_dossier" style="font-family: Trebuchet MS"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width:25%">
+                                <span style="color:#111085;font-family: Trebuchet MS; font-size:16pt">Date de réservation: </span>
+                            </td>
+                            <td><span t-if="o.order_date" t-esc="o.order_date.strftime('%d/%m/%Y')" style="font-family: Trebuchet MS"/></td>
+                        </tr>
+                    </table>
+
+                    <h2 style="color:#5891f8;padding-left:20pt; margin-top:10pt">Acquéreur</h2>
+                    <div class="col-lg-12" style="border: 3pt solid #7f9ce8; border-radius:25px">
+                        <table style="width:100%">
+                            <tr>
+                                <td style="padding:5pt; width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Nom Complet: </span> </td>
+                                <td colspan="3"><span t-esc="o.partner_id.name" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt;color:#111085;font-family: Trebuchet MS; font-size:14pt">N° CIN: </span> </td>
+                                <td colspan="3"><span t-esc="o.partner_id.ref" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt;color:#111085;font-family: Trebuchet MS; font-size:14pt">Adresse: </span> </td>
+                                <td colspan="3"><span t-esc="o.partner_id.street" style="font-family: Trebuchet MS"/> <span t-esc="o.partner_id.city" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt;color:#111085;font-family: Trebuchet MS; font-size:14pt">Téléphone: </span> </td>
+                                <td style="width:25%"><span t-esc="o.partner_id.mobile or o.partner_id.phone" style="font-family: Trebuchet MS"/></td>
+                                
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Email: </span> </td>
+                                <td style="width:25%"><span t-esc="o.partner_id.email" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                        </table>
+                    </div>
+
+
+                    <h2 style="color:#5891f8;padding-left:20pt; margin-top:10pt">Désignation du bien</h2>
+                    <div class="col-lg-12" style="border: 3pt solid #7f9ce8; border-radius:25px">
+                        <table style="width:100%">
+                            <tr>
+                                <td style="padding:5pt;width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Type: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.type_residence.name" style="font-family: Trebuchet MS"/></td>
+                                
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Référence: </span> </td>
+                                <td style="width:25%"></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Immeuble: </span> </td>
+                                <td><span t-esc="o.property_id.property_immeuble" style="font-family: Trebuchet MS"/></td>
+                                
+                                <td> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Niveau: </span> </td>
+                                <td><span t-esc="o.property_id.property_etage" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Numéro: </span> </td>
+                                <td><span t-esc="o.property_id.property_number" style="font-family: Trebuchet MS"/></td>
+                                
+                                <td> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">GH: </span> </td>
+                                <td><span t-esc="o.property_id.property_gh" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            
+                        </table>
+                    </div>
+
+                    <t t-set="avance" t-value="env['account.payment'].search([]).filtered(lambda p: o.invoice_id.id in p.reconciled_invoice_ids.ids).sorted(lambda x: x.id)"/>
+                    <t t-set="num_avance" t-value="1"/>
+                    <t t-set="iter" t-value="0"/>
+                    <h2 style="color:#5891f8;padding-left:20pt; margin-top:10pt">Financement</h2>
+                    <div class="col-lg-12" style="border: 3pt solid #7f9ce8; border-radius:25px">
+                        <table style="width:100%">
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">FD: </span> </td>
+                                <td colspan="3"><span t-esc="o.property_id.property_fd" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt;width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">N° titre foncier: </span> </td>
+                                <td colspan="3"><span t-esc="o.property_id.property_tf" style="font-family: Trebuchet MS"/></td>
+                                
+                                
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Prix: </span> </td>
+                                <td ><span t-field="o.property_id.property_pu" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Superficie: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.property_superficie" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr t-if="o.property_id.type_residence_name and 'magasin' in o.property_id.type_residence_name.lower()">
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Prix Mezzanine: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.prix_mez" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Superficie Mezzanine: </span> </td>
+                                <td ><span t-field="o.property_id.property_sup_mez" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr t-if="o.property_id.type_residence_name and 'appartement' in o.property_id.type_residence_name.lower()">
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Prix Buandrie: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.pu_buandrie" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Superficie Buandrie: </span> </td>
+                                <td ><span t-field="o.property_id.property_buandrie" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt;width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Prix Global: </span> </td>
+                                <td colspan="3"><span t-esc="o.property_id.unit_price" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+                            
+                                <!-- <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Total Avance: </span> </td>
+                                <td style="width:25%"><span t-if="o.invoice_id" t-esc="o.invoice_id.amount_total_signed - o.invoice_id.amount_residual_signed" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td> -->
+                            </tr>
+                            <t t-foreach="len(avance)" t-as="av">
+                                <t t-set="av" t-value="iter"/>
+                                <tr t-if="av &lt; len(avance)">
+                                    <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Avance <span t-esc="num_avance"/>: </span> </td>
+                                    <td>
+                                        <span>Payé le </span>
+                                        <span t-esc="avance[av].date.strftime('%d/%m/%Y')" style="font-family: Trebuchet MS"/>,
+                                        en <span t-esc="avance[av].journal_id.name" style="font-family: Trebuchet MS"/>,
+                                        <b><span t-esc="avance[av].amount" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS; margin-left:5pt"/> DHS </b>
+                                    </td>
+                                    <t t-set="num_avance" t-value="num_avance+1"/>
+                                    <t t-set="av" t-value="av+1"/>
+
+                                    <td t-if="av &lt; len(avance)" style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Avance <span t-esc="num_avance"/>: </span> </td>
+                                    <td t-if="av &lt; len(avance)">
+                                        <span>Payé le </span>
+                                        <span t-esc="avance[av].date.strftime('%d/%m/%Y')" style="font-family: Trebuchet MS"/>,
+                                        en <span t-esc="avance[av].journal_id.name" style="font-family: Trebuchet MS"/>,
+                                        <b><span t-esc="avance[av].amount" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS; margin-left:5pt"/> DHS </b>
+                                    </td>
+                                    <t t-set="num_avance" t-value="num_avance+1"/>
+                                    <t t-set="av" t-value="av+1"/>
+                                    <t t-set="iter" t-value="av"/>
+                                </tr>
+                            </t>
+                            <tr>
+                                <td style="padding:5pt;width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Reste à payer: </span> </td>
+                                <td colspan="3"><span t-if="o.invoice_id" t-esc="o.invoice_id.amount_residual_signed" t-options="{'widget': 'float', 'precision': 2}" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                        </table>
+
+                        <br/><br/>
+                        <!-- <br/>
+                        <span style="margin-left:5pt; color:#111085;font-family: Trebuchet MS; font-size:14pt"> </span> <span style="margin-left:20pt; color:#111085;font-family: Trebuchet MS; font-size:14pt"> 
+                        <span t-if="o.invoice_id" t-options="{'widget': 'float', 'precision': 2}" t-esc="o.invoice_id.amount_residual_signed"/> </span> -->
+                    </div>
+
+                    <!-- <div class="row"> -->
+                        <div class="col-12">
+                            <table style="width:100%;margin-top:15pt">
+                                <tr>
+                                    <td style="width:50%" class="text-center">
+                                        <span style="float:center;color:#111085;font-family: Trebuchet MS; font-size:14pt">Signature Client</span>
+                                        
+                                    </td>
+                                    <td style="width:50%" class="text-center">
+                                        <span style="float:center;color:#111085;font-family: Trebuchet MS; font-size:14pt">Signature Commercial</span><br/>
+                                        <span style="float:center;font-family: Trebuchet MS; font-size:14pt" t-esc="o.create_uid.partner_id.name"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    <!-- </div> -->
+                </div>
+                <div class="footer">
+                       <div style="height:2.1cm"/>
+                        <div style="white-space:nowrap; padding:5pt;font-size:10pt; font-weight: bold; width:100%; text-align:center">
+                            <strong > <span class="page"/> / <span class="topage"/> </strong>
+                        </div>
+                </div>
+            </t>
+        </template>
+
+        <!-- ================================================================================================================== -->
+
+        <record id="autorisation_versement_report" model="ir.actions.report">
+            <field name="name">Autorisation de versement</field>
+            <field name="model">property.sale</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">real_estate_extend.report_main_autorisation_versement</field>
+            <field name="report_file">real_estate_extend.report_main_autorisation_versement</field>
+            <field name="binding_type">report</field>
+            <field name="binding_model_id" ref="real_estate_management.model_property_sale"/>
+        </record>
+
+        <template id="report_main_autorisation_versement" >
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-set="lang" t-value="fr_FR"/>
+                    <t t-set="company" t-value="env.user.company_id"/>
+                    <t t-call="real_estate_extend.report_document_autorisation_versement" t-company="company" t-lang="lang"/>
+                </t>
+            </t>
+        </template>
+
+        <template id="report_document_autorisation_versement">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div class="row col-12">
+                        <div class="col-4"><img t-if="o.property_id.projet_id.logo" t-att-src="image_data_uri(o.property_id.projet_id.logo)" style="max-height: 150px" alt="Logo"/></div>
+                        <div class="col-4"/>
+                        <div class="col-4">
+                            <table style="border: 0pt solid black">
+                                <tr>
+                                    <td>
+                                        <span t-esc="company.name.upper()" style="color:#48639a; font-family: Microsoft Sans Serif; font-size:14pt"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span style="color:#5486a2; font-family: Microsoft Sans Serif; font-size:14pt">
+                                            PROJET: <span t-if="o.property_id.projet_id" t-esc="o.property_id.projet_id.name.upper()" style="color:#5486a2"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span style="color:#5486a2; font-family: Microsoft Sans Serif; font-size:14pt">
+                                            ZONE: <span t-if="o.property_id.projet_id" t-esc="o.property_id.projet_id.name.upper()"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span style="color:#5486a2; font-family: Microsoft Sans Serif; font-size:14pt">
+                                            TEL:
+                                            <t t-if="o.property_id.projet_id and o.property_id.projet_id.telephone1"> <span style="color:#5486a2" t-esc="o.property_id.projet_id.telephone1"/> <br/> </t>
+                                            <t t-if="o.property_id.projet_id and o.property_id.projet_id.telephone2"> <span style="margin-left:38pt; color:#5486a2" t-esc="o.property_id.projet_id.telephone2"/> </t>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                     
+                    </div>
+
+                    <table style="width:100%; margin-top:10pt">
+                        <tr>
+                            <td style="width:15%"/>
+                            <td style="width:30%">
+                                <br/><br/>
+                                <h4 style="color:#111085; font-family: Trebuchet MS;float: left">
+                                    Autorisation d'ordre de virement <br/>
+                                    N° <span t-esc="o.name" style="color:#111085; font-family: Trebuchet MS"/>
+                                </h4>
+                            </td>
+                            <td/>
+                        </tr>
+                    </table>
+
+                    <table style="width:100%; margin-top:20pt">
+                        <tr>
+                            <td>
+                                <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">Edité le: </span>
+                                <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')" style="font-family: Trebuchet MS"/>
+                            </td>
+                            <td/>
+                        </tr>
+                    </table>
+
+
+                    <div class="row col-12">
+                        <div style="width:49%;border: 2pt solid #7f9ce8; border-radius:10px; float:left">
+                            <table style="width:100%">
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:10pt; width:50%"> <span style="margin-top:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">Programme: </span> </td>
+                                    <td><span t-esc="o.property_id.projet_id.name" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt"> <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">Type de Produit: </span> </td>
+                                    <td><span t-esc="o.property_id.type_residence.name" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt;padding-bottom:10pt"> <span style="margin-bottom:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">Prix forfaitaire total: </span> </td>
+                                    <td><span t-field="o.sale_price" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                         <!--<div class="col-1"/> -->
+                        <div style="width:50%;border: 2pt solid #7f9ce8; border-radius:10px; margin-left:5pt; float:right">
+                            <table style="width:100%">
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:10pt; width:30%"> <span style="margin-top:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">Client: </span> </td>
+                                    <td><span t-esc="o.partner_id.name" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt"> <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">N° CIN: </span> </td>
+                                    <td><span t-esc="o.partner_id.ref" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt;padding-bottom:10pt"> <span style="margin-bottom:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">Tél: </span> </td>
+                                    <td><span t-esc="o.partner_id.mobile or o.partner_id.phone" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row col-12 mt-10">
+                        <div style="width:100%;border: 2pt solid #7f9ce8; border-radius:10px; float:left; margin-top:20pt">
+                            <table style="width:100%">
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:10pt; width:25%"> <span style="margin-top:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">Montant a verser en Dhs: </span> </td>
+                                    <td><span t-field="o.sale_price" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt"> <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">Date de réservation: </span> </td>
+                                    <td><span t-if="o.invoice_id and o.invoice_id.invoice_date" t-esc="o.invoice_id.invoice_date.strftime('%d/%m/%Y')" style="font-family: Trebuchet MS"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt;padding-bottom:10pt"> <span style="margin-bottom:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">N° Dossier: </span> </td>
+                                    <td>
+                                        <span t-field="o.numero_dossier" style="font-family: Trebuchet MS"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row col-12">
+                        <div style="width:60%;border: 2pt solid #7f9ce8; border-radius:10px; margin-top:20pt">
+                            <table>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:10pt"> <span style="margin-top:2pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">COORDONNEES BANCAIRES</span> </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt"> <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">RIB: </span> <span style="color:#4646a2;font-family: Trebuchet MS; font-size:12pt">011 780 0000852100011117 29</span>  </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt"> <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">Banque: </span> <span style="color:#4646a2;font-family: Trebuchet MS; font-size:12pt">BANK OF AFRICA</span>  </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left:2pt;padding-top:5pt;padding-bottom:10pt"> <span style="color:#111085;font-family: Trebuchet MS; font-size:12pt">Agence: </span> <span style="color:#4646a2;font-family: Trebuchet MS; font-size:12pt">SBATA, 186 188BD OUED EDDAHAB JAMILA 7</span>  </td>
+                                </tr>
+
+                            </table>
+                        </div>
+                        <div style="width:40%; margin-top:50pt">
+                            <table class="table table-borderless">
+                                <tr style="border-bottom: 2pt solid #7f9ce8">
+                                    <td class="text-center"><span style="padding-top:40pt; color:#111085;font-family: Trebuchet MS; font-size:12pt">Responsable Commercial</span></td>
+                                    <span t-esc="o.partner_id.user_id.name" style="font-family: Trebuchet MS"/>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <br/>
+                    <h2 style="color:#5891f8;padding-left:10pt; margin-top:10pt"><u>Important: </u></h2>
+                    <div class="col-12">
+    <p style="color:#111085; font-size:11t; font-family:Trebuchet MS">
+        Cette autorisation d'ordre de virement est valable pour l'achat d'un appartement/magasin.<br/>Cette copie d'autorisation d'ordre de virement est valable pendant un délai de 72 heures après la date d’impression de celle-ci. Dans le cas échéant, elle sera automatiquement annulée, et le bien sera remis en vente.<br/>
+        En cas de désistement, un prélèvement de 10 % du montant du bien sera déduit directement au profit de la société bailleresse.<br/>
+        La réservation mentionnée ci-dessus est tenue de s'acquitter de l'ordre de virement dont le montant est fixé ci-dessus avant la date d'expiration indiquée.<br/>
+        Le non-respect par le réservataire du délai d'ordre de virement et des conditions entraîne la déchéance automatique.<br/>
+        La réservation n'est considérée comme valable et définitive qu'après réception du reçu de l'ordre de virement délivré par la banque du client.<br/>
+        <b>Les versements en espèces sont interdits. Seuls les virements et les chèques sont autorisés.</b><br/>
+        <b><span>الدفع نقدًا ممنوع. يسمح فقط بالتحويلات المصرفية والشيكات.</span></b><br/>
+        <b>La superficie indiquée pour le bien que vous souhaitez réserver est susceptible de varier, à la hausse ou à la baisse, d'ici la fin du projet ; la mise à jour est implicite.</b><br/>
+        <b><span>المساحة المشار إليها للعقار الذي ترغبون في حجزه قد تتغير، بالزيادة أو النقصان، حتى نهاية المشروع؛ والتحديث ضمني.</span></b><br/>
+        Tout litige pouvant survenir entre les parties sera réglé à l'amiable. En cas de persistance du litige, compétence est donnée aux tribunaux de Casablanca.<br/>
+        (L'acquéreur devra prendre en considération que toute réservation non concrétisée par acte notarial définitif dans les 30 jours suivant la déclaration d'obtention du permis d'habiter sera automatiquement annulée et sera soumise aux sanctions en vigueur.)
+    </p>
+</div>
+
+
+
+
+
+                    <!-- <h2 style="color:#5891f8;padding-left:20pt; margin-top:10pt">Désignation du bien</h2>
+                    <div class="col-lg-12" style="border: 3pt solid #7f9ce8; border-radius:25px">
+                        <table style="width:100%">
+                            <tr>
+                                <td style="padding:5pt;width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Type: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.type_residence.name" style="font-family: Trebuchet MS"/></td>
+                               
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Référence: </span> </td>
+                                <td style="width:25%"></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Immeuble: </span> </td>
+                                <td><span t-esc="o.property_id.property_immeuble" style="font-family: Trebuchet MS"/></td>
+                               
+                                <td> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Niveau: </span> </td>
+                                <td><span t-esc="o.property_id.property_etage" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Numéro: </span> </td>
+                                <td><span t-esc="o.property_id.property_number" style="font-family: Trebuchet MS"/></td>
+                               
+                                <td> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">GH: </span> </td>
+                                <td><span t-esc="o.property_id.property_gh" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                           
+                        </table>
+                    </div>
+
+
+                    <h2 style="color:#5891f8;padding-left:20pt; margin-top:10pt">Financement</h2>
+                    <div class="col-lg-12" style="border: 3pt solid #7f9ce8; border-radius:25px">
+                        <table style="width:100%">
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">FD: </span> </td>
+                                <td colspan="3"><span t-esc="o.property_id.property_fd" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt;width:25%"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">N° titre foncier: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.property_tf" style="font-family: Trebuchet MS"/></td>
+                               
+                                <td style="width:25%"> <span style="color:#111085;font-family: Trebuchet MS; font-size:14pt">Superficie: </span> </td>
+                                <td style="width:25%"><span t-esc="o.property_id.property_superficie" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding:5pt"> <span style="margin-left:10pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Prix: </span> </td>
+                                <td colspan="3"><span t-field="o.sale_price" style="font-family: Trebuchet MS"/></td>
+                            </tr>
+                        </table>
+
+                        <br/><br/><br/>
+                        <span style="margin-left:5pt; color:#111085;font-family: Trebuchet MS; font-size:14pt">Reste à payer: </span>
+                    </div> -->
+                </div>
+                <div class="footer">
+                       <div style="height:2.1cm"/>
+                        <div style="white-space:nowrap; padding:5pt;font-size:10pt; font-weight: bold; width:100%; text-align:center">
+                            <strong> <span class="page"/> / <span class="topage"/> </strong>
+                        </div>
+                </div>
+            </t>
+        </template>
+
+    </data>
+</odoo>

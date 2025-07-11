@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+
+        <xpath expr="//div[@class='pos-receipt-amount']" position="attributes">
+            <attribute name="t-if">!props.data.is_gift_receipt</attribute>
+        </xpath>
+        <xpath expr="//OrderWidget" position="before">
+                <div t-if="props.data.is_gift_receipt" style="text-align: center; font-weight: bold; color: #D76C82;margin-top:4px;">
+                    <div style="text-align:center;">***********************</div>
+                    <div style="text-align:center;"><i class="fa fa-gift ms-2" style="font-size: 22px;"></i></div>
+                    <div style="font-size: 12px;">
+                        CADEAU POUR VOUS.
+                    </div>
+                    <div style="text-align:center;">***********************</div>
+                </div>
+        </xpath>
+    </t>
+
+    <!--
+    <t t-inherit="point_of_sale.Orderline" t-inherit-mode="extension">
+        <xpath expr="//li[@class='price-per-unit']" position="replace">
+            <attribute name="t-if">!props.data.is_gift_receipt</attribute>
+        </xpath>
+    </t>
+    -->
+</templates>
