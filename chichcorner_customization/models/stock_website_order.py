@@ -2,6 +2,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import logging
 import requests
+import json
 import xml.etree.ElementTree as ET
 _logger = logging.getLogger(__name__)
 
@@ -31,9 +32,13 @@ class WebsiteOrder(models.Model):
         ('delivered', 'Livré'),
         ('en_cours_preparation', 'En cours de préparation'),
         ('encourdelivraison', 'En cours de Livraison'),
+        ('annuler', 'Annulé'),
     ], string="Statut", default='initial')
     pos_order_id = fields.Many2one('pos.order', string="POS Order")
-
+    '''added 07/07/2025'''
+    colis_created = fields.Boolean(string="Colis Created", default=False, help="Indicates if colis have been created via SendIt API")
+    colis_codes = fields.Text(string="Colis Codes", help="Store colis codes from SendIt API (JSON format)")
+    label_url = fields.Char(string="Imprimer étiquette", help="URL of the generated labels PDF")
     '''
     def action_send_to_pos(self):
         for order in self:
@@ -86,7 +91,685 @@ class WebsiteOrder(models.Model):
                 }
             }
 '''
+    API_BASE_URL = "https://www.premiumshop.ma/api"
+    WS_KEY = "E93WGT9K8726WW7F8CWIXDH9VGFBLH6A"
+    '''added in 07/07/2025'''
+    def _check_and_update_order_status(self):
+        """Check if all order lines are cancelled and update order status accordingly"""
+        for order in self:
+            if order.line_ids:
+                # Check if all lines have status 'annuler'
+                all_cancelled = all(line.status_ligne_commande == 'annuler' for line in order.line_ids)
 
+                if all_cancelled and order.status != 'annuler':
+                    order.status = 'annuler'
+                    # Log the change in chatter
+                    order.message_post(
+                        body="Statut de la commande automatiquement mis à jour vers 'Annuler' car toutes les lignes de commande sont annulées.",
+                        message_type='notification'
+                    )
+
+    def action_create_colis(self):
+        # Check if colis already created
+        if self.colis_created:
+            raise UserError("Les colis ont déjà été créés pour cette commande.")
+
+        # Check if order has lines
+        if not self.line_ids:
+            raise UserError("Aucune ligne de commande trouvée.")
+
+        # Get unique colis numbers from order lines (excluding cancelled ones)
+        active_lines = self.line_ids.filtered(lambda l: l.status_ligne_commande != 'annuler')
+        colis_numbers = list(set(active_lines.mapped('numero_colis')))
+        colis_numbers = [num for num in colis_numbers if num and num > 0]
+
+        if not colis_numbers:
+            raise UserError("Aucun numéro de colis trouvé dans les lignes de commande actives (non annulées).")
+
+        # Liste ville
+        city_codes = {
+            1: "Casablanca", 38: "Bouskoura-Centre", 39: "Errahma", 40: "Dar Bouaza", 41: "Mohamadia",
+            42: "Berrechid", 43: "Settat", 44: "Mediouna", 45: "Nouacer", 47: "Had Soualem",
+            49: "Bouznika", 51: "Sidi rahal", 52: "Tanger", 53: "Rabat", 54: "Agadir", 55: "El jadida",
+            56: "Marrakech", 57: "Ahfir", 58: "Ain Harrouda", 60: "Al Aaroui", 61: "Al Hoceima",
+            63: "Beni Ensar", 64: "Benslimane", 65: "Berkane", 66: "Biougra", 68: "Chellalat Mohammedia",
+            69: "Fnideq", 70: "Khemisset", 71: "Martil", 72: "Nador", 73: "Oujda", 76: "Selouane",
+            81: "Taza", 86: "Ain El Aouda", 87: "Ain Attig", 94: "Ain Taoujdate", 96: "Ait Melloul",
+            100: "Anza", 102: "Arfoud", 104: "Assilah", 105: "Azemmour", 106: "Azilal", 107: "Azrou",
+            108: "Bab Berred", 110: "Bejaad", 111: "Belfaa", 113: "Benguerir", 115: "Beni Mellal",
+            118: "Boujdour", 119: "Boujniba", 122: "Chefchaouen", 123: "Chichaoua", 124: "Dakhla",
+            126: "Demnate", 130: "Drarga", 132: "Haj Kaddour", 133: "El Kelaa Des Sraghna", 135: "Er-Rich",
+            136: "Errachidia", 137: "Essaouira", 139: "Fes", 141: "Fquih Ben Salah", 142: "Guelmim",
+            143: "Guercif", 145: "Ifran", 147: "Imouzzer du Kandar", 148: "Inzegane", 149: "Jamaat Shaim",
+            153: "Kasba Tadla", 154: "Kelaat M'Gouna", 155: "Kenitra", 156: "Khemis Des Zemamra",
+            157: "Khenifra", 158: "Khouribga", 159: "Ksar El Kebir", 161: "Laattaouia", 162: "La2youne",
+            164: "Laarache", 165: "Mdiq", 167: "Meknes", 168: "Merzouga", 170: "Midelt", 172: "Moulay Abdellah",
+            174: "Moulay Idriss zerhouni", 175: "Mrirt", 177: "Ouarzazate", 180: "Oued Zem", 181: "Oulad Teima",
+            186: "Rissani", 188: "Safi", 189: "Saidia", 190: "Sale", 191: "Sala El Jadida", 192: "Sebt El Guerdane",
+            193: "Sebt Gzoula", 195: "Sebt Oulad Nemma", 196: "Sefrou", 198: "Sidi Addi", 200: "Sidi Allal El Bahraoui",
+            201: "Sidi Bennour", 202: "Sidi Bibi", 203: "Sidi Bouzid", 204: "Sidi Ifni", 205: "Sidi Kacem",
+            206: "Sidi Slimane", 208: "Skhirat", 209: "Souk El Arbaa Du Gharb", 211: "Tamansourt", 212: "Tamesna",
+            214: "Tan-Tan", 215: "Taounate", 216: "Taourirt", 218: "Taroudant", 220: "Temara", 222: "Tetouan",
+            223: "Tiflet", 224: "Tinghir", 225: "Tit Melil", 226: "Tiznit", 228: "Youssoufia", 229: "Zagoura",
+            232: "Zaouiat Cheikh", 233: "Sidi Bouknadel", 253: "Boufakrane", 255: "Goulmima", 257: "El Hajeb",
+            260: "Ksar Sghir", 261: "Deroua", 262: "Sidi Hrazem", 263: "Oulad Tayeb", 264: "Skhinate",
+            265: "Mejat", 266: "Ouislane", 268: "Ain chkaf", 269: "zaer", 270: "Sidi Yahya El Gharb",
+            271: "Bounoir", 272: "Hettan", 273: "Bni yakhlef", 274: "Sidi Hajjaj", 275: "Ben Ahmed",
+            276: "Dar Essalam", 278: "Tssoultante", 279: "Tameslouht", 280: "Chwiter", 282: "Souihla",
+            283: "Ouled Hassoune", 284: "Sidi Moussa", 285: "Lahbichat", 286: "Sidi Abdellah Ghiyat",
+            287: "Douar Lahna", 288: "Tamellalt", 290: "Echemmaia", 291: "Skoura", 292: "Taznakht",
+            293: "Agds", 294: "Tikiwin", 295: "Temsia", 296: "Ait Amira", 297: "Chtouka", 303: "Essemara",
+            304: "Zeghanghane", 307: "Oualidia", 308: "Talmest", 309: "Ounagha", 310: "Souira Guedima",
+            311: "Tlat Bouguedra", 313: "Sakia El hamra", 314: "Ain-Cheggag", 315: "Moulay Yaakoub",
+            316: "Saiss", 317: "Mechra Bel Ksiri", 318: "El Gara", 319: "Tinejdad", 320: "Agourai",
+            322: "Tata", 323: "Ouazzane", 324: "Boumalen dades", 325: "Jerada", 326: "Tamaris",
+            327: "Zaida", 328: "Boumia", 329: "Missour", 330: "Aoufous", 331: "Ait Aissa Ou Brahim",
+            332: "Tarzout", 333: "Alnif", 334: "Ait Sedrate Sahl Gharbia", 336: "Ayt Ihya", 337: "Zaio",
+            338: "Aklim", 339: "el aioun charqiya", 340: "Ain-Bni-Mathar", 341: "Jorf El Melha",
+            343: "Khenichet", 344: "El Ksiba", 347: "Oued Amlil", 349: "Aknoul", 351: "Tizi Ouasli",
+            352: "El Mansouria", 353: "Oued laou", 354: "Boulman", 355: "Ait ourir", 356: "Ourika",
+            357: "Imzouren", 358: "Tahla", 362: "Bab Taza", 364: "Tahanaout", 365: "Mers El Kheir",
+            366: "Harhoura", 367: "Mehdia", 368: "Moulay Bousselham", 371: "El Aarjate", 372: "Oulmas",
+            374: "Aourir", 375: "Loudaya", 376: "Tarast", 377: "Leqliaa", 378: "Dcheira El Jihadia",
+            379: "Aoulouz", 380: "Ait Aiaaza", 381: "Ghazoua", 382: "Ghafsai", 383: "Gueznaia",
+            384: "Sidi Hssain", 385: "Mnar", 386: "Jebila", 387: "Khandagour", 388: "Laaouamera",
+            389: "Cabo Negro", 390: "Rencon", 391: "Lagfifat", 392: "Massa", 393: "Oulad Berhil",
+            394: "Taliouine", 395: "Oulad Yaich", 396: "Ighrem", 397: "Tagzirt", 398: "Oulad Youssef",
+            400: "Oulad Ali", 401: "Oulad Zmam", 402: "Sidi Jaber", 403: "Souk Sebt", 404: "Dar Ould Zidouh",
+            405: "Oulad Ayad", 406: "Sidi Aissa", 407: "Oulad M'barek", 408: "Afourar", 409: "Timoulilt",
+            410: "Beni Ayat", 411: "Ouaouizeght", 412: "Aguelmous", 413: "Tighassaline", 414: "Ait Ishaq",
+            415: "Bradia", 416: "Had Boumoussa", 417: "Foum Oudi", 418: "Laayayta", 439: "Assahrij",
+            440: "Touima", 441: "farkhana", 442: "Driouch", 443: "Midar", 444: "Ben Taieb",
+            445: "Tiztoutine", 446: "Beni Chiker", 447: "Imintanout", 448: "Sid L'Mokhtar",
+            449: "Sidi bou zid Chichaoua", 450: "Mzoudia", 451: "Mejjat", 452: "Ait hadi",
+            453: "Sidi chiker", 454: "Ighoud", 455: "Bouaboud", 456: "Agouidir", 457: "Ouled Moumna",
+            458: "Tamraght", 459: "Ouled Dahhou", 462: "Taghazout", 479: "Madagh", 481: "Ain Erreggada",
+            482: "Dar-El Kebdani", 483: "Boudinar", 484: "Tamsamane", 485: "Telat Azlaf",
+            486: "Kassita", 487: "Tafersit", 488: "Ouled Settout", 489: "Kariat Arekmane",
+            490: "Beni Sidal Jbel", 491: "Mariouari", 492: "Bouarg", 493: "Afra", 494: "Jaadar",
+            495: "Bassatine El Menzeh", 496: "Ajdir", 497: "Boukidaren", 498: "Ait-Kamara",
+            499: "Bni Hadifa", 500: "Targuist", 501: "Issaguen", 502: "Bni Bouayach", 503: "Timezgadiouine",
+            504: "Ain Leuh", 505: "Sidi Allal Tazi", 506: "El Kebab", 507: "Outat El Haj",
+            508: "Azrou ait melloul", 509: "Tissa", 510: "Ain Aicha", 511: "Bani Walid",
+            512: "Bouhouda", 513: "Ain Mediouna", 515: "Sidi El Ayedi", 516: "Oulad Said",
+            517: "Oulad Abbou", 518: "El Borouj", 519: "Guisser", 520: "Tiddas", 521: "Marnissa",
+            522: "Bab Marzouka", 523: "Bir Jdid", 524: "Oulad Frej", 525: "Sidi Smail",
+            526: "Messawerr Rasso", 527: "El Haouzia", 528: "Oulad Amrane", 529: "Afsou",
+            530: "Khemis du Sahel", 531: "Zouada", 532: "Timahdite", 533: "Bouderbala",
+            534: "Sebt Jahjouhe", 535: "Dlalha", 536: "Lalla Mimouna", 537: "Bouskoura-Ville Verte",
+            538: "Bouskoura-Ouled Saleh", 539: "Ouahat Sidi Brahim", 540: "Sidi Taibi", 541: "Sidi Kaouki",
+            542: "Tidzi", 543: "Smimou", 544: "Tamanar", 545: "Ait Daoud", 546: "Douar laarab",
+            547: "Tleta-El Henchane", 548: "Meskala", 549: "Tafetachte", 550: "Had Draa", 551: "Birkouate",
+            552: "Tamegroute", 553: "Beni zoli", 554: "Bleida", 555: "Agdez", 556: "Tagounite",
+            557: "Ait Boudaoud", 558: "Errouha", 559: "Fezouata", 560: "Nkoub", 561: "M'Hamid El Ghizlane",
+            562: "Tazarine", 563: "Ternata", 564: "Tamezmoute", 565: "Tinzouline", 566: "Tansifte",
+            567: "Achakkar", 568: "Tinzouline", 577: "Belaaguid", 578: "Agafay", 579: "Asni",
+            580: "Ben Rahmoun", 581: "Sidi Bou Othmane", 582: "Chrifia", 583: "Sidi Zouine",
+            584: "Sebt Ben Sassi", 585: "Kariat Ba Mohamed", 586: "Khlalfa", 587: "Fricha",
+            588: "Ourtzagh", 589: "Hajria Ouled Daoud", 590: "Bni Oulid", 591: "Ben Karrich",
+            592: "Stehat", 593: "El Jebeha", 594: "KAA ASRASS", 595: "Bni Ahmed Cherqia",
+            596: "Azla", 597: "Belyounech", 598: "Beni Hassane", 600: "Ain Lahcen", 601: "Mirleft",
+            602: "Imi Ouaddar"
+        }
+        district_id = 1  # Default to Casablanca
+        if self.city:
+            city_lower = self.city.strip().lower()
+            for code, city_name in city_codes.items():
+                if city_name.lower() == city_lower:
+                    district_id = code
+                    break
+        # SendIt API configuration
+        api_url = "https://app.sendit.ma/api/v1/deliveries"
+        labels_api_url = "https://app.sendit.ma/api/v1/deliveries/getlabels"
+        headers = {
+            'Authorization': 'Bearer 19801906|DW6w2VmqOijIei5q9JCiD3x3BrY6Uyy2YvIeubIO',
+            'Content-Type': 'application/json'
+        }
+
+        created_colis = []
+        failed_colis = []
+        delivery_codes = []
+
+        for colis_num in colis_numbers:
+            try:
+                # Get lines for this colis (excluding cancelled ones)
+                colis_lines = active_lines.filtered(lambda l: l.numero_colis == colis_num)
+
+                # Calculate total amount for this colis
+                total_amount = sum(line.price * line.quantity for line in colis_lines)
+
+                # Prepare products description with name and barcode
+                products_description = ", ".join([
+                    f"{line.product_name} - Code: {line.code_barre or 'N/A'} (Qty: {line.quantity})"
+                    for line in colis_lines
+                ])
+
+                # Prepare API payload
+                payload = {
+                    "pickup_district_id": "1",
+                    "district_id": district_id,
+                    "name": self.client_name or "",
+                    "amount": total_amount,
+                    "address": f"{self.adresse or ''} {self.second_adresse or ''}".strip(),
+                    "phone": self.phone or self.mobile or "",
+                    "comment": f"Commande: {self.reference or self.ticket_id} - Colis #{colis_num}",
+                    "reference": f"{self.ticket_id}-COLIS-{colis_num}",
+                    "allow_open": 1,
+                    "allow_try": 0,
+                    "products_from_stock": 0,
+                    "products": products_description,
+                    "packaging_id": 1,
+                    "option_exchange": 0,
+                    "delivery_exchange_id": 1
+                }
+
+                # Make API call
+                response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+
+                if response.status_code == 200 or response.status_code == 201:
+                    response_data = response.json()
+                    created_colis.append({
+                        'colis_num': colis_num,
+                        'response': response_data
+                    })
+
+                    # Extract delivery code from response for label printing
+                    if 'data' in response_data and 'code' in response_data['data']:
+                        delivery_codes.append(response_data['data']['code'])
+                    elif 'code' in response_data:
+                        delivery_codes.append(response_data['code'])
+
+                else:
+                    failed_colis.append({
+                        'colis_num': colis_num,
+                        'error': f"HTTP {response.status_code}: {response.text}"
+                    })
+
+            except Exception as e:
+                failed_colis.append({
+                    'colis_num': colis_num,
+                    'error': str(e)
+                })
+
+        # Print labels if any colis were created successfully
+        label_url = None
+        if delivery_codes:
+            try:
+                # Prepare label printing payload
+                label_payload = {
+                    "codesToPrint": ",".join(delivery_codes),
+                    "printFormat": 1
+                }
+
+                # Make label printing API call
+                label_response = requests.post(labels_api_url, headers=headers, json=label_payload, timeout=30)
+
+                if label_response.status_code == 200:
+                    label_data = label_response.json()
+                    if label_data.get('success') and 'data' in label_data and 'fileUrl' in label_data['data']:
+                        label_url = label_data['data']['fileUrl']
+
+            except Exception as e:
+                # Log label printing error but don't fail the whole process
+                self.message_post(
+                    body=f"Erreur lors de l'impression des étiquettes: {str(e)}",
+                    message_type='notification'
+                )
+
+        # Update order status
+        if created_colis:
+            self.colis_created = True
+
+            # Store colis codes for future reference
+            if delivery_codes:
+                self.colis_codes = json.dumps(delivery_codes)
+
+            # Store label URL if available
+            if label_url:
+                self.label_url = label_url
+
+            # Log success message
+            success_message = f"Colis créés avec succès:\n"
+            for colis in created_colis:
+                success_message += f"- Colis #{colis['colis_num']}\n"
+
+            if label_url:
+                success_message += f"\nÉtiquettes générées: {label_url}\n"
+
+            if failed_colis:
+                success_message += f"\nErreurs pour certains colis:\n"
+                for colis in failed_colis:
+                    success_message += f"- Colis #{colis['colis_num']}: {colis['error']}\n"
+
+            self.message_post(
+                body=success_message,
+                message_type='notification'
+            )
+
+            # Show success message to user with label URL
+            if failed_colis:
+                message = f"{len(created_colis)} colis créés avec succès, {len(failed_colis)} échecs."
+            else:
+                message = f"{len(created_colis)} colis créés avec succès!"
+
+            if label_url:
+                message += f" Étiquettes générées!"
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Création de Colis',
+                    'message': message,
+                    'type': 'success' if not failed_colis else 'warning',
+                    'sticky': False,
+                }
+            }
+
+        else:
+            # All failed
+            error_message = "Échec de création de tous les colis:\n"
+            for colis in failed_colis:
+                error_message += f"- Colis #{colis['colis_num']}: {colis['error']}\n"
+
+            raise UserError(error_message)
+
+    def action_print_labels(self):
+        """Print labels for existing colis"""
+        if not self.colis_created:
+            raise UserError("Aucun colis créé pour cette commande. Créez d'abord les colis.")
+
+        if not self.colis_codes:
+            raise UserError("Aucun code de colis trouvé. Les colis doivent être créés via l'API SendIt.")
+
+        try:
+            # Parse stored colis codes
+            colis_codes = json.loads(self.colis_codes)
+
+            if not colis_codes:
+                raise UserError("Aucun code de colis valide trouvé.")
+
+            # SendIt API configuration
+            labels_api_url = "https://app.sendit.ma/api/v1/deliveries/getlabels"
+            headers = {
+                'Authorization': 'Bearer 19801906|DW6w2VmqOijIei5q9JCiD3x3BrY6Uyy2YvIeubIO',
+                'Content-Type': 'application/json'
+            }
+
+            # Prepare label printing payload
+            label_payload = {
+                "codesToPrint": ",".join(colis_codes),
+                "printFormat": 1
+            }
+
+            # Make label printing API call
+            label_response = requests.post(labels_api_url, headers=headers, json=label_payload, timeout=30)
+
+            if label_response.status_code == 200:
+                label_data = label_response.json()
+
+                if label_data.get('success') and 'data' in label_data and 'fileUrl' in label_data['data']:
+                    label_url = label_data['data']['fileUrl']
+
+                    # Update stored label URL
+                    self.label_url = label_url
+
+                    # Log success message
+                    self.message_post(
+                        body=f"Étiquettes générées avec succès: {label_url}",
+                        message_type='notification'
+                    )
+
+                    # Show success message to user
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'Impression des Étiquettes',
+                            'message': f'Étiquettes générées avec succès! URL: {label_url}',
+                            'type': 'success',
+                            'sticky': False,
+                        }
+                    }
+                else:
+                    raise UserError(f"Erreur dans la réponse API: {label_data.get('message', 'Réponse invalide')}")
+            else:
+                raise UserError(f"Erreur API: HTTP {label_response.status_code} - {label_response.text}")
+
+        except json.JSONDecodeError:
+            raise UserError("Erreur lors du décodage des codes de colis. Veuillez recréer les colis.")
+        except Exception as e:
+            raise UserError(f"Erreur lors de l'impression des étiquettes: {str(e)}")
+
+    def action_get_colis_status(self):
+        """Get status of existing colis from SendIt API"""
+        if not self.colis_created:
+            raise UserError("Aucun colis créé pour cette commande.")
+
+        if not self.colis_codes:
+            raise UserError("Aucun code de colis trouvé.")
+
+        try:
+            # Parse stored colis codes
+            colis_codes = json.loads(self.colis_codes)
+
+            if not colis_codes:
+                raise UserError("Aucun code de colis valide trouvé.")
+
+            # SendIt API configuration
+            api_url = "https://app.sendit.ma/api/v1/deliveries"
+            headers = {
+                'Authorization': 'Bearer 19801906|DW6w2VmqOijIei5q9JCiD3x3BrY6Uyy2YvIeubIO',
+                'Content-Type': 'application/json'
+            }
+
+            # Get colis status
+            response = requests.get(api_url, headers=headers, timeout=30)
+
+            if response.status_code == 200:
+                response_data = response.json()
+
+                if response_data.get('success') and 'data' in response_data:
+                    # Filter colis that belong to this order
+                    order_colis = []
+                    for colis in response_data['data']:
+                        if colis.get('code') in colis_codes:
+                            order_colis.append(colis)
+
+                    if order_colis:
+                        # Prepare status message
+                        status_message = "Statut des colis:\n"
+                        for colis in order_colis:
+                            status_message += f"- Code: {colis.get('code', 'N/A')}\n"
+                            status_message += f"  Statut: {colis.get('status', 'N/A')}\n"
+                            status_message += f"  Nom: {colis.get('name', 'N/A')}\n"
+                            status_message += f"  Téléphone: {colis.get('phone', 'N/A')}\n"
+                            status_message += f"  Montant: {colis.get('amount', 'N/A')} MAD\n"
+                            status_message += f"  Dernière action: {colis.get('last_action_at', 'N/A')}\n\n"
+
+                        # Log status message
+                        self.message_post(
+                            body=status_message,
+                            message_type='notification'
+                        )
+
+                        return {
+                            'type': 'ir.actions.client',
+                            'tag': 'display_notification',
+                            'params': {
+                                'title': 'Statut des Colis',
+                                'message': f'Statut récupéré pour {len(order_colis)} colis.',
+                                'type': 'info',
+                                'sticky': True,
+                            }
+                        }
+                    else:
+                        raise UserError("Aucun colis trouvé pour cette commande dans l'API SendIt.")
+                else:
+                    raise UserError(f"Erreur dans la réponse API: {response_data.get('message', 'Réponse invalide')}")
+            else:
+                raise UserError(f"Erreur API: HTTP {response.status_code} - {response.text}")
+
+        except json.JSONDecodeError:
+            raise UserError("Erreur lors du décodage des codes de colis.")
+        except Exception as e:
+            raise UserError(f"Erreur lors de la récupération du statut: {str(e)}")
+
+    def action_open_label_url(self):
+        """Open the label URL in a new window"""
+        if not self.label_url:
+            raise UserError("Aucune URL d'étiquette disponible. Imprimez d'abord les étiquettes.")
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': self.label_url,
+            'target': 'new',
+        }
+
+    def action_update_colis_status(self):
+        """Update colis status for each order line"""
+        if not self.colis_created:
+            raise UserError("Aucun colis créé pour cette commande.")
+
+        if not self.colis_codes:
+            raise UserError("Aucun code de colis trouvé.")
+
+        try:
+            # Parse stored colis codes
+            colis_codes = json.loads(self.colis_codes)
+
+            if not colis_codes:
+                raise UserError("Aucun code de colis valide trouvé.")
+
+            # SendIt API configuration
+            headers = {
+                'Authorization': 'Bearer 19801906|DW6w2VmqOijIei5q9JCiD3x3BrY6Uyy2YvIeubIO',
+                'Content-Type': 'application/json'
+            }
+
+            updated_lines = 0
+            failed_updates = []
+
+            # Get active lines (non-cancelled)
+            active_lines = self.line_ids.filtered(lambda l: l.status_ligne_commande != 'annuler').filtered(
+                lambda l: l.status_ligne_commande != 'annuler')
+
+            # Group lines by colis number
+            colis_groups = {}
+            for line in active_lines:
+                if line.numero_colis:
+                    if line.numero_colis not in colis_groups:
+                        colis_groups[line.numero_colis] = []
+                    colis_groups[line.numero_colis].append(line)
+
+            # Update status for each colis
+            for i, colis_code in enumerate(colis_codes):
+                try:
+                    # Get colis details from SendIt API
+                    api_url = f"https://app.sendit.ma/api/v1/deliveries/{colis_code}"
+                    response = requests.get(api_url, headers=headers, timeout=30)
+
+                    if response.status_code == 200:
+                        response_data = response.json()
+
+                        if response_data.get('success') and 'data' in response_data:
+                            colis_data = response_data['data']
+                            status = colis_data.get('status', 'PENDING')
+
+                            # Map the colis number (i+1 because colis_codes is 0-indexed)
+                            colis_num = i + 1
+
+                            # Update lines for this colis
+                            if colis_num in colis_groups:
+                                for line in colis_groups[colis_num]:
+                                    line.write({
+                                        'status_colis': status,
+                                        'colis_code': colis_code,
+                                        'last_status_update': fields.Datetime.now()
+                                    })
+                                    updated_lines += 1
+                        else:
+                            failed_updates.append(
+                                f"Colis {colis_code}: {response_data.get('message', 'Réponse invalide')}")
+                    else:
+                        failed_updates.append(f"Colis {colis_code}: HTTP {response.status_code}")
+
+                except Exception as e:
+                    failed_updates.append(f"Colis {colis_code}: {str(e)}")
+
+            # Update order status based on colis statuses
+            self._update_order_status()
+
+            # Prepare result message
+            if updated_lines > 0:
+                message = f"Statut mis à jour pour {updated_lines} ligne(s) de commande."
+                if failed_updates:
+                    message += f"\nÉchecs: {len(failed_updates)}"
+
+                # Log success message
+                success_msg = f"Mise à jour du statut des colis:\n- {updated_lines} ligne(s) mise(s) à jour avec succès\n"
+                if failed_updates:
+                    success_msg += f"- {len(failed_updates)} échec(s):\n"
+                    for error in failed_updates:
+                        success_msg += f"  * {error}\n"
+
+                self.message_post(
+                    body=success_msg,
+                    message_type='notification'
+                )
+
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Mise à jour du Statut',
+                        'message': message,
+                        'type': 'success' if not failed_updates else 'warning',
+                        'sticky': False,
+                    }
+                }
+            else:
+                raise UserError("Aucune ligne n'a pu être mise à jour.")
+
+        except json.JSONDecodeError:
+            raise UserError("Erreur lors du décodage des codes de colis.")
+        except Exception as e:
+            raise UserError(f"Erreur lors de la mise à jour du statut: {str(e)}")
+
+    def _update_order_status(self):
+        """Update order status based on colis statuses"""
+        if not self.line_ids:
+            return
+
+        colis_statuses = self.line_ids.mapped('status_colis')
+
+        # Map colis status to order status
+        if any(status == 'PENDING' for status in colis_statuses):
+            self.status = 'prepare'
+        elif any(status == 'PICKEDUP' for status in colis_statuses):
+            self.status = 'encourdelivraison'
+        elif all(status == 'WAREHOUSE' for status in colis_statuses):
+            self.status = 'encourdelivraison'
+        elif all(status == 'TRANSIT' for status in colis_statuses):
+            self.status = 'encourdelivraison'
+        elif all(status == 'DISTRIBUTED' for status in colis_statuses):
+            self.status = 'encourdelivraison'
+        elif all(status == 'DELIVERED' for status in colis_statuses):
+            self.status = 'delivered'
+
+        for line in self.line_ids:
+            if line.status_colis == 'PENDING':
+                line.status_ligne_commande = 'prepare'
+            elif line.status_colis in ['PICKEDUP', 'WAREHOUSE', 'TRANSIT', 'DISTRIBUTED']:
+                line.status_ligne_commande = 'encourdelivraison'
+            elif line.status_colis == 'DELIVERED':
+                line.status_ligne_commande = 'delivered'
+            elif line.status_colis in ['CANCELED', 'REJECTED']:
+                line.status_ligne_commande = 'annuler'
+
+    @api.model
+    def cron_update_colis_status(self):
+        """Cron job to update colis status for orders with specific statuses"""
+        try:
+            # Find orders with status 'prepare' or 'encourdelivraison' that have colis created
+            orders = self.search([
+                ('status', 'in', ['prepare', 'encourdelivraison', 'encoursdepreparation']),
+                ('colis_created', '=', True),
+                ('colis_codes', '!=', False)
+            ])
+
+            _logger.info(f"Cron job: Found {len(orders)} orders to update colis status")
+
+            for order in orders:
+                try:
+                    # Call the existing update method but handle exceptions to continue with other orders
+                    order.action_update_colis_status()
+                    _logger.info(f"Successfully updated colis status for order {order.ticket_id}")
+                except Exception as e:
+                    _logger.error(f"Failed to update colis status for order {order.ticket_id}: {str(e)}")
+                    continue
+
+        except Exception as e:
+            _logger.error(f"Cron job error: {str(e)}")
+    #ramassage
+    def action_create_pickup_request(self):
+        """Create pickup request via SendIt API"""
+        # Check if colis are created
+        if not self.colis_created:
+            raise UserError("Aucun colis créé pour cette commande. Créez d'abord les colis.")
+
+        # Check if colis codes exist
+        if not self.colis_codes:
+            raise UserError("Aucun code de colis trouvé. Les colis doivent être créés via l'API SendIt.")
+
+        try:
+            # Parse stored colis codes
+            colis_codes = json.loads(self.colis_codes)
+
+            if not colis_codes:
+                raise UserError("Aucun code de colis valide trouvé.")
+
+            pickup_api_url = "https://app.sendit.ma/api/v1/pickups"
+            headers = {
+                'Authorization': 'Bearer 19801906|DW6w2VmqOijIei5q9JCiD3x3BrY6Uyy2YvIeubIO',
+                'Content-Type': 'application/json'
+            }
+
+            # Prepare pickup request payload
+            pickup_payload = {
+                "district_id": 3,
+                "name": "CHICCORNER CHICCORNER",
+                "phone": "0666089558",
+                "address": "Morocco Mall Ain Diab boutique 1 ère étage",
+                "note": f"Merci de m'appeler avons d'arrivé",
+                "deliveries": ",".join(colis_codes)
+            }
+
+            # Make pickup request API call
+            response = requests.post(pickup_api_url, headers=headers, json=pickup_payload, timeout=30)
+
+            if response.status_code == 200 or response.status_code == 201:
+                response_data = response.json()
+
+                if response_data.get('success'):
+                    # Store pickup information
+                    pickup_info = {
+                        'pickup_id': response_data.get('data', {}).get('id'),
+                        'pickup_code': response_data.get('data', {}).get('code'),
+                        'pickup_status': response_data.get('data', {}).get('status'),
+                        'created_at': fields.Datetime.now()
+                    }
+
+                    # You can add fields to store pickup information
+                    # For now, we'll use the message system to log the information
+                    success_message = f"Demande de ramassage créée avec succès:\n"
+                    success_message += f"- Codes Colis: {', '.join(colis_codes)}\n"
+
+                    self.message_post(
+                        body=success_message,
+                        message_type='notification'
+                    )
+
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'Demande de Ramassage',
+                            'message': f'Demande de ramassage créée avec succès',
+                            'type': 'success',
+                            'sticky': False,
+                        }
+                    }
+                else:
+                    raise UserError(f"Erreur dans la réponse API: {response_data.get('message', 'Réponse invalide')}")
+            else:
+                raise UserError(f"Erreur API: HTTP {response.status_code} - {response.text}")
+
+        except json.JSONDecodeError:
+            raise UserError("Erreur lors du décodage des codes de colis. Veuillez recréer les colis.")
+        except Exception as e:
+            raise UserError(f"Le ramassage de ce colis a déjà été effectué. Veuillez consulter votre plateforme Sendit et vérifier les informations. Merci.")
+    '''end 07/07/2025'''
     @api.model
     def sync_status_to_prestashop(self):
         """
@@ -238,7 +921,6 @@ class WebsiteOrder(models.Model):
             return False
 
     '''added'''
-
     @api.model
     def auto_process_initial_orders(self):
 
@@ -421,7 +1103,6 @@ class WebsiteOrder(models.Model):
                 'type': 'info',
             }
         }
-
     @api.model
     def _cron_check_pos_orders_status(self):
         """Cron job to automatically check and update order status"""
@@ -431,7 +1112,6 @@ class WebsiteOrder(models.Model):
 
         for order in orders_to_check:
             order._check_and_update_status()
-
     def _separate_lines_by_stock(self, order):
         """Separate order lines into in-stock and out-of-stock lists"""
         in_stock_lines = []
@@ -535,7 +1215,6 @@ class WebsiteOrder(models.Model):
         if all_paid:
             self.status = 'prepare'
             _logger.info(f"Order {self.ticket_id} status updated to 'prepare' - all POS orders are paid")
-
     def _group_lines_by_warehouse(self, order):
         """Group order lines by their warehouse based on product stock location"""
         warehouse_groups = {}
@@ -587,9 +1266,8 @@ class WebsiteOrder(models.Model):
                 line.write({
                     'magasin_name': warehouse.name,
                     'numero_colis': warehouse_to_colis[warehouse.id],
-                    # 'code_barre': line.product_id.barcode or line.product_id.default_code or '',
+                    #'code_barre': line.product_id.barcode or line.product_id.default_code or '',
                 })
-
     def _find_warehouse_for_product(self, product):
         """Find the warehouse that has stock for the given product"""
         # Search for stock quants with available quantity
@@ -613,7 +1291,6 @@ class WebsiteOrder(models.Model):
                 return warehouse
 
         return None
-
     def _create_pos_order_for_warehouse(self, order, warehouse, lines):
         """Create a POS order for a specific warehouse with given lines"""
 
@@ -682,13 +1359,13 @@ class WebsiteOrder(models.Model):
             raise UserError("Employee not found.")
 
         # Generate sequence and reference
-        # sequence = self._generate_pos_sequence(pos_config, session)
+        #sequence = self._generate_pos_sequence(pos_config, session)
         pos_reference = self._generate_pos_reference(order, warehouse.name)
 
         pos_user = session.user_id or self.env.user
 
         pos_order_vals = {
-            # 'name': sequence,
+            #'name': sequence,
             'state': 'draft',
             'partner_id': partner.id if partner else False,
             'lines': order_lines,
@@ -745,7 +1422,6 @@ class WebsiteOrder(models.Model):
             return f"WEB-{base_reference}-{warehouse_name}-{uid}"
         else:
             return f"{base_reference}-{uid}"
-
     def _update_order_lines_with_receipt_number(self, lines, order, warehouse_name):
         """Update order lines with receipt number using the generated POS reference"""
         receipt_number = self._generate_pos_reference(order, warehouse_name)
@@ -754,7 +1430,6 @@ class WebsiteOrder(models.Model):
             line.write({
                 'numero_recu': receipt_number,
             })
-
     def _find_or_create_partner(self, order):
         partner = None
         if order.email:
@@ -812,19 +1487,61 @@ class StockWebsiteOrderLine(models.Model):
                                help="Nom du magasin où le produit est stocké")
     stock_count = fields.Float(string="Stock Disponible", compute="_compute_magasin_and_stock", store=True,
                                help="Quantité disponible en stock dans l'entrepôt")
-    numero_colis = fields.Integer(string="Numéro Colis", help="Numéro de colis basé sur l'entrepôt de stock")
+    numero_colis = fields.Integer(string="Numéro Colis", help="Numéro de colis basé sur l'entrepôt de stock",readonly=True)
     code_barre = fields.Char(string="Code Barre", help="Code barre du produit")
-    numero_recu = fields.Char(string="Numéro De Ticket", help="Numéro de reçu/ticket de la commande POS")
+    numero_recu = fields.Char(string="Numéro De Ticket", help="Numéro de reçu/ticket de la commande POS",readonly=True)
     status_ligne_commande = fields.Selection([
         ('initial', 'Initial'),
         ('prepare', 'Préparé'),
         ('delivered', 'Livré'),
         ('en_cours_preparation', 'En cours de préparation'),
         ('encourdelivraison', 'En cours de Livraison'),
-        ('annuler', 'annuler')
+        ('annuler', 'Annulé')
     ], string="Statut", default='initial')
-    #payment = fields.Char(string="Mode de paiment")
 
+    status_colis = fields.Selection([
+        ('PENDING', 'En attente'),
+        ('TO_PREPARE', 'Preparer'),
+        ('NEW_DESTINATION', 'Changer'),
+        ('TOPICKUP', 'Ramassage en cours'),
+        ('PICKEDUP', 'Ramassué'),
+        ('WAREHOUSE', 'Entrepôt'),
+        ('TRANSIT', 'En transit'),
+        ('DISTRIBUTED', 'Distribué'),
+        ('UNREACHABLE', 'Injoignable'),
+        ('POSTPONED', 'Reporté'),
+        ('DELIVERING', 'En cours de livraison'),
+        ('CANCELED', 'Annulé'),
+        ('REJECTED', 'Refusé'),
+        ('DELIVERED', 'Livré'),
+    ], string="Statut de la Colis", help="Statut du colis depuis l'API SendIt")
+
+    colis_code = fields.Char(string="Code Colis", help="Code unique du colis depuis SendIt API",readonly=True)
+    last_status_update = fields.Datetime(string="Dernière mise à jour du statut",help="Date de la dernière mise à jour du statut du colis",readonly=True)
+    #payment = fields.Char(string="Mode de paiment")
+    '''added 07/07/2025'''
+
+    def write(self, vals):
+        """Override write method to check order status when line status changes"""
+        result = super().write(vals)
+
+        # If status_ligne_commande is being updated, check if we need to update order status
+        if 'status_ligne_commande' in vals:
+            orders_to_check = self.mapped('order_id')
+            orders_to_check._check_and_update_order_status()
+
+        return result
+    @api.model
+    def create(self, vals):
+        """Override create method to check order status when new line is created"""
+        result = super().create(vals)
+
+        # Check order status after creating new line
+        if result.order_id:
+            result.order_id._check_and_update_order_status()
+
+        return result
+    '''end of add 07/07/2025'''
     @api.depends('product_id')
     def _compute_price_from_pricelist(self):
         """Compute price from product pricelist based on barcode"""
@@ -843,7 +1560,6 @@ class StockWebsiteOrderLine(models.Model):
                     line.price = line.product_id.list_price
             else:
                 line.price = 0.0
-
     @api.depends('product_id')
     def _compute_magasin_and_stock(self):
         """Compute warehouse name and stock count for each product"""

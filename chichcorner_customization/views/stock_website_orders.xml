@@ -13,13 +13,14 @@
                 <field name="status"
                        widget="badge"
                        decoration-info="status == 'initial'"
-                       decoration-danger="status == 'en_cours_preparation'"
-                       decoration-warning="status == 'prepare'"
+                       decoration-warning="status == 'en_cours_preparation'"
+                       decoration-success="status == 'prepare'"
+                       decoration-bf="status == 'encourdelivraison'"
+                       decoration-danger="status == 'annuler'"
                 />
             </tree>
         </field>
     </record>
-
     <!-- Form View with Order Lines -->
     <record id="view_stock_website_order_form" model="ir.ui.view">
         <field name="name">stock.website.order.form</field>
@@ -27,6 +28,34 @@
         <field name="arch" type="xml">
             <form string="Commande du site">
                 <header>
+                    <button name="action_create_colis" string="Créer Colis" type="object" class="btn-success"
+                        invisible="colis_created or status in ('initial', 'en_cours_preparation','delivered','encourdelivraison','annuler')"
+                        help="Créer les colis via SendIt"/>
+
+                    <button name="action_create_pickup_request" string="Demande de Ramassage" type="object" class="btn-primary"
+                    invisible="not colis_created"
+                    help="Créer une demande de ramassage pour les colis"/>
+
+                    <!--
+                    <button name="action_update_colis_status" string="Mettre à jour Statut Colis" type="object" class="btn-secondary"
+                    invisible="not colis_created"
+                    help="Mettre à jour le statut des colis pour chaque ligne"/> -->
+                    <!-- Print Labels Button - Only visible when colis are created -->
+                    <button name="action_print_labels" string="Imprimer Étiquettes" type="object" class="btn-success"
+                    invisible="1"
+                    help="Imprimer les étiquettes des colis"/>
+
+                    <!-- Check Status Button - Only visible when colis are created -->
+                    <button name="action_get_colis_status" string="Vérifier Statut Colis" type="object" class="btn-info"
+                    invisible="1"
+                    help="Vérifier le statut des colis"/>
+
+                    <!-- Open Labels Button - Only visible when label URL exists -->
+                    <button name="action_open_label_url" string="Imprimer Étiquettes" type="object" class="btn-success"
+                    invisible="not label_url"
+                    help="Ouvrir le PDF des étiquettes"/>
+
+                    <field name="colis_created" invisible="1"/>
                     <button name="action_send_to_pos" string="Traiter la commande" type="object" class="btn-primary" invisible="1" />
                     <!--
                     <button name="action_check_pos_status" type="object"
@@ -52,6 +81,10 @@
                             <field name="city"/>
                         </group>
                     </group>
+                    <group string="Informations Colis" invisible="not colis_created">
+                    <field name="colis_codes" readonly="1"/>
+                    <field name="label_url" readonly="1" widget="url"/>
+                    </group>
                     <notebook>
                         <page string="Ligne de commande">
                             <field name="line_ids">
@@ -68,6 +101,9 @@
                                         <!--
                                         <field name="discount"/>-->
                                         <field name="status_ligne_commande"/>
+                                        <field name="status_colis"/>
+                                        <field name="colis_code"/>
+                                        <field name="last_status_update"/>
                                     </tree>
                             </field>
                         </page>
@@ -91,6 +127,7 @@
                 <filter string="En cours de préparation" name="en_cours_preparation" domain="[('status', '=', 'en_cours_preparation')]"/>
                 <filter string="Préparé" name="prepare" domain="[('status', '=', 'prepare')]"/>
                 <filter string="Livré" name="delivered" domain="[('status', '=', 'delivered')]"/>
+                <filter string="Annulé" name="annuler" domain="[('status', '=', 'annuler')]"/>
                 <separator/>
                 <field name="date_commande" filter_domain="[('date_commande', '=', self)]"/>
                 <separator/>

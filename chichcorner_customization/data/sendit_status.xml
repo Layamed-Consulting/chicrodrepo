@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Cron job to update colis status every 5 minutes -->
+        <record id="cron_update_colis_status" model="ir.cron">
+            <field name="name">Update Colis Status</field>
+            <field name="model_id" ref="model_stock_website_order"/>
+            <field name="state">code</field>
+            <field name="code">env['stock.website.order'].cron_update_colis_status()</field>
+            <field name="interval_number">7</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="doall" eval="False"/>
+        </record>
+    </data>
+</odoo>
