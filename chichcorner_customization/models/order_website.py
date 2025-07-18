@@ -545,9 +545,9 @@ class CustomerFetcher(models.TransientModel):
         # Get yesterday and today dates
         today = datetime.now().date()
         yesterday = today - timedelta(days=1)
-
+        tomorrow = today + timedelta(days=1)
         # Format dates for API filter
-        date_filter = f"[{yesterday},{today}]"
+        date_filter = f"[{yesterday},{tomorrow}]"
         orders_url = f"{self.API_BASE_URL}/orders?filter[date_add]={date_filter}&date=1"
 
         try:
