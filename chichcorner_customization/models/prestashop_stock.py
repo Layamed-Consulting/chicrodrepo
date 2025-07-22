@@ -463,14 +463,11 @@ class PrestashopStockCron(models.Model):
         Cron job function that runs every 5 minutes to monitor stock changes
         This is the main entry point for the scheduled action
         """
-        _logger.info("=== CRON: Stock Change Monitor Started (5min interval) ===")
-
         try:
             # Monitor stock move lines in the last 10 minutes
             affected_products = self.get_products_from_stock_move_lines(minutes_ago=10)
 
             if affected_products:
-                _logger.info(f"CRON: {len(affected_products)} products affected by stock moves")
                 # Trigger PrestaShop sync for affected products
                 self.sync_affected_products_to_prestashop(affected_products)
             else:
@@ -491,9 +488,6 @@ class PrestashopStockCron(models.Model):
         # Calculate the time threshold
         time_threshold = datetime.now() - timedelta(minutes=minutes_ago)
 
-        _logger.info(f"=== STOCK MOVE LINES MONITOR - Last {minutes_ago} minutes ===")
-        _logger.info(f"Checking stock move lines since: {time_threshold}")
-
         # Search for stock move lines that were updated in the last X minutes
         # We check both create_date and write_date to catch all changes
         recent_move_lines = self.env['stock.move.line'].search([
@@ -508,15 +502,10 @@ class PrestashopStockCron(models.Model):
         if not recent_move_lines:
             _logger.info("No stock move lines found in the specified time period")
             return []
-
-        _logger.info(f"Found {len(recent_move_lines)} stock move lines with recent changes")
-
         # Get unique products from the move lines
         product_ids = set()
         for move_line in recent_move_lines:
             product_ids.add(move_line.product_id.id)
-
-        _logger.info(f"Found {len(product_ids)} unique products affected by stock moves")
 
         # Get current stock quantities for these products
         affected_products = []
@@ -543,8 +532,6 @@ class PrestashopStockCron(models.Model):
         """
         time_threshold = datetime.now() - timedelta(minutes=minutes_ago)
 
-        _logger.info(f"=== STOCK MOVE LINES FOR EAN13: {ean13} - Last {minutes_ago} minutes ===")
-
         # Find the product
         product = self.env['product.product'].search([
             ('default_code', '=', ean13)
@@ -553,9 +540,6 @@ class PrestashopStockCron(models.Model):
         if not product:
             _logger.info(f"Product with EAN13 {ean13} not found")
             return False
-
-        _logger.info(f"Product: {product.name}")
-        _logger.info(f"Current Stock: {product.qty_available}")
 
         # Check recent move lines for this product
         recent_move_lines = self.env['stock.move.line'].search([
@@ -566,7 +550,6 @@ class PrestashopStockCron(models.Model):
         ], order='write_date desc')
 
         if recent_move_lines:
-            _logger.info(f"Found {len(recent_move_lines)} recent move lines for this product:")
             for move_line in recent_move_lines:
                 _logger.info(
                     f"  - Qty: {move_line.qty_done} | {move_line.location_id.name} → {move_line.location_dest_id.name}")
@@ -616,52 +599,71 @@ class PrestashopStockCron(models.Model):
                 _logger.warning(f"Exception during PUT: {url} | Error: {e}")
                 return None
 
-        def search_prestashop_product_by_ean13(ean13):
-            """Search for a product in PrestaShop by EAN13"""
+        def search_and_update_combination_stock(ean13, new_quantity):
+            """Search for combination by EAN13 and update its stock directly"""
             try:
-                search_url = f"{BASE_URL}/products?filter[ean13]={ean13}&display=full"
-                products_root = get_xml(search_url)
+                # Step 1: Search for combinations by EAN13
+                search_url = f"{BASE_URL}/combinations?filter[ean13]={ean13}&display=full"
+                _logger.info(f"Searching combinations: {search_url}")
+                combinations_root = get_xml(search_url)
 
-                if products_root is None:
-                    return None
+                if combinations_root is None:
+                    _logger.warning(f"Failed to get combinations response for EAN13 {ean13}")
+                    return False
 
-                # Check if any products were found
-                products = products_root.findall('.//product')
-                if not products:
-                    return None
+                # Check if any combinations were found
+                combinations = combinations_root.findall('.//combination')
+                if not combinations:
+                    _logger.warning(f"No combinations found for EAN13 {ean13}")
+                    return False
 
-                # Return the first product found
-                return products[0]
-            except Exception as e:
-                _logger.error(f"Error searching for EAN13 {ean13}: {e}")
-                return None
+                # Get the first combination
+                combination = combinations[0]
 
-        def update_stock_availables(product_element, new_quantity):
-            """Update all stock_availables for a product"""
-            updated_count = 0
+                # Extract the combination ID
+                combination_id_elem = combination.find('.//id')
+                if combination_id_elem is None:
+                    _logger.warning(f"No combination ID found for EAN13 {ean13}")
+                    return False
 
-            try:
-                # Find all stock_available elements
-                stock_availables = product_element.findall('.//associations/stock_availables/stock_available')
+                combination_id = combination_id_elem.text.strip()
 
+                # Step 2: Get stock_available by combination ID
+                stock_search_url = f"{BASE_URL}/stock_availables?filter[id_product_attribute]={combination_id}&display=full"
+                stock_root = get_xml(stock_search_url)
+
+                if stock_root is None:
+                    _logger.warning(f"Failed to get stock_availables for combination ID {combination_id}")
+                    return False
+
+                # Find stock_available elements
+                stock_availables = stock_root.findall('.//stock_available')
                 if not stock_availables:
-                    _logger.warning("No stock_availables found in product")
-                    return 0
+                    _logger.warning(f"No stock_availables found for combination ID {combination_id}")
+                    return False
 
+                updated_count = 0
+
+                # Step 3: Update each stock_available
                 for stock_available_elem in stock_availables:
-                    stock_id_node = stock_available_elem.find('id')
-                    if stock_id_node is None:
+                    stock_id_elem = stock_available_elem.find('.//id')
+                    if stock_id_elem is None:
                         continue
 
-                    stock_id = stock_id_node.text
-                    _logger.info(f"Updating stock_available ID: {stock_id}")
+                    stock_id = stock_id_elem.text.strip()
 
-                    # Get current stock_available details
-                    stock_url = f"{BASE_URL}/stock_availables/{stock_id}"
-                    stock_detail = get_xml(stock_url)
+                    # Get current quantity for logging
+                    current_qty_elem = stock_available_elem.find('.//quantity')
+                    old_qty = current_qty_elem.text if current_qty_elem is not None else "unknown"
+
+                    _logger.info(f"Updating stock_available ID {stock_id} for combination {combination_id}")
+
+                    # Get the full stock_available details for update
+                    stock_detail_url = f"{BASE_URL}/stock_availables/{stock_id}"
+                    stock_detail = get_xml(stock_detail_url)
 
                     if stock_detail is None:
-                        _logger.warning(f"Failed to get stock_available {stock_id}")
+                        _logger.warning(f"Failed to get stock_available details for ID {stock_id}")
                         continue
 
                     stock_available_node = stock_detail.find('stock_available')
@@ -671,7 +673,6 @@ class PrestashopStockCron(models.Model):
                     # Update quantity
                     quantity_node = stock_available_node.find('quantity')
                     if quantity_node is not None:
-                        old_qty = quantity_node.text
                         quantity_node.text = str(int(new_quantity))
 
                         # Prepare update XML
@@ -680,24 +681,23 @@ class PrestashopStockCron(models.Model):
                         updated_data = ET.tostring(updated_doc, encoding='utf-8', xml_declaration=True)
 
                         # Send update
-                        response = put_xml(stock_url, updated_data)
+                        response = put_xml(stock_detail_url, updated_data)
 
                         if response and response.status_code in (200, 201):
                             _logger.info(
-                                f"✔ PRESTASHOP SYNC: Updated stock {stock_id} for EAN13 {product_element.find('.//ean13').text}: {old_qty} → {int(new_quantity)}")
+                                f"✔ PRESTASHOP SYNC: Updated stock_available {stock_id} for EAN13 {ean13} (combination {combination_id}): {old_qty} → {int(new_quantity)}")
                             updated_count += 1
                         else:
-                            _logger.warning(f"Failed to update stock {stock_id}")
+                            _logger.warning(f"Failed to update stock_available {stock_id}")
 
-                    # Small delay between stock updates
+                    # Small delay between updates
                     time.sleep(0.1)
 
+                return updated_count > 0
+
             except Exception as e:
-                _logger.error(f"Error updating stock_availables: {e}")
-
-            return updated_count
-
-        _logger.info("=== PRESTASHOP SYNC: Starting sync for affected products ===")
+                _logger.error(f"Error processing combination for EAN13 {ean13}: {e}")
+                return False
 
         sync_success = 0
         sync_failed = 0
@@ -707,25 +707,13 @@ class PrestashopStockCron(models.Model):
                 ean13 = product_info['ean13']
                 new_qty = product_info['qty_available']
 
-                _logger.info(f"PRESTASHOP SYNC: Processing EAN13 {ean13} with quantity {new_qty}")
+                # Search for combination and update stock directly
+                success = search_and_update_combination_stock(ean13, new_qty)
 
-                # Search for product in PrestaShop
-                prestashop_product = search_prestashop_product_by_ean13(ean13)
-
-                if prestashop_product is None:
-                    _logger.warning(f"PRESTASHOP SYNC: EAN13 {ean13} not found in PrestaShop")
-                    sync_failed += 1
-                    continue
-
-                # Update stock availables
-                updated_count = update_stock_availables(prestashop_product, new_qty)
-
-                if updated_count > 0:
-                    _logger.info(
-                        f"✔ PRESTASHOP SYNC: Successfully updated {updated_count} stock_availables for EAN13 {ean13}")
+                if success:
                     sync_success += 1
                 else:
-                    _logger.warning(f"PRESTASHOP SYNC: No stock_availables updated for EAN13 {ean13}")
+                    _logger.warning(f"PRESTASHOP SYNC: Failed to update stock for EAN13 {ean13}")
                     sync_failed += 1
 
                 # Small delay between products
@@ -734,10 +722,5 @@ class PrestashopStockCron(models.Model):
             except Exception as e:
                 _logger.error(f"PRESTASHOP SYNC: Error processing {product_info.get('ean13', 'unknown')}: {e}")
                 sync_failed += 1
-
-        _logger.info(f"=== PRESTASHOP SYNC SUMMARY ===")
-        _logger.info(f"Successfully synced: {sync_success} products")
-        _logger.info(f"Failed to sync: {sync_failed} products")
-        _logger.info(f"=== PRESTASHOP SYNC COMPLETED ===")
 
         return True
