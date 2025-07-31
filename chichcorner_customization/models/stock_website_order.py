@@ -94,6 +94,7 @@ class WebsiteOrder(models.Model):
     API_BASE_URL = "https://www.premiumshop.ma/api"
     WS_KEY = "E93WGT9K8726WW7F8CWIXDH9VGFBLH6A"
     '''added in 07/07/2025'''
+
     def _check_and_update_order_status(self):
         """Check if all order lines are cancelled and update order status accordingly"""
         for order in self:
@@ -105,7 +106,7 @@ class WebsiteOrder(models.Model):
                     order.status = 'annuler'
                     # Log the change in chatter
                     order.message_post(
-                        body="Statut de la commande automatiquement mis à jour vers 'Annuler' car toutes les lignes de commande sont annulées.",
+                        body="Statut de la commande mis à jour vers 'Annuler' car toutes les lignes de commande sont annulées.",
                         message_type='notification'
                     )
 
@@ -863,6 +864,7 @@ class WebsiteOrder(models.Model):
                 'prepare': 9,
                 'encourdelivraison': 4,
                 'delivered': 5,
+                'annuler': 6,
             }
 
             prestashop_status_id = status_mapping.get(order.status)
@@ -1416,10 +1418,10 @@ class WebsiteOrder(models.Model):
 
         # Create the UID in the expected format: YYYY-MM-DD-NNN (14 characters including dashes)
         uid = f"{date_part}-{sequence_num}"
-
+        uidp = f"{order.payment_method}"
         # Include warehouse name in reference if provided
         if warehouse_name:
-            return f"WEB-{base_reference}-{warehouse_name}-{uid}"
+            return f"WEB-{base_reference}-{warehouse_name}-{uidp}"
         else:
             return f"{base_reference}-{uid}"
     def _update_order_lines_with_receipt_number(self, lines, order, warehouse_name):
