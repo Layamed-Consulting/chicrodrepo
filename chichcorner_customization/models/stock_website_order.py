@@ -1421,7 +1421,7 @@ class WebsiteOrder(models.Model):
         uidp = f"{order.payment_method}"
         # Include warehouse name in reference if provided
         if warehouse_name:
-            return f"WEB-{base_reference}-{warehouse_name}-{uidp}"
+            return f"WEB-{base_reference}-{uidp}-{uid}"
         else:
             return f"{base_reference}-{uid}"
     def _update_order_lines_with_receipt_number(self, lines, order, warehouse_name):
