@@ -526,7 +526,7 @@ class PrestashopStockCron(models.Model):
         return affected_products
 
     @api.model
-    def log_stock_move_lines_for_product(self, ean13, minutes_ago=10):
+    def log_stock_move_lines_for_product(self, ean13, minutes_ago=35):
         """
         Log stock move lines for a specific product by EAN13
         """
