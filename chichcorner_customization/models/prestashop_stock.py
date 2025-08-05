@@ -465,7 +465,7 @@ class PrestashopStockCron(models.Model):
         """
         try:
             # Monitor stock move lines in the last 10 minutes
-            affected_products = self.get_products_from_stock_move_lines(minutes_ago=35)
+            affected_products = self.get_products_from_stock_move_lines(minutes_ago=10)
 
             if affected_products:
                 # Trigger PrestaShop sync for affected products
@@ -480,7 +480,7 @@ class PrestashopStockCron(models.Model):
         return True
 
     @api.model
-    def get_products_from_stock_move_lines(self, minutes_ago=35):
+    def get_products_from_stock_move_lines(self, minutes_ago=10):
         """
         Get products affected by stock move lines in the last X minutes
         Returns list of products with their current stock quantities
@@ -526,7 +526,7 @@ class PrestashopStockCron(models.Model):
         return affected_products
 
     @api.model
-    def log_stock_move_lines_for_product(self, ean13, minutes_ago=35):
+    def log_stock_move_lines_for_product(self, ean13, minutes_ago=10):
         """
         Log stock move lines for a specific product by EAN13
         """
