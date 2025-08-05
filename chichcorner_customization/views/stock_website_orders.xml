@@ -33,7 +33,7 @@
                         help="Créer les colis via SendIt"/>
 
                     <button name="action_create_pickup_request" string="Demande de Ramassage" type="object" class="btn-primary"
-                    invisible="not colis_created"
+                    invisible="not colis_created or status == 'delivered'"
                     help="Créer une demande de ramassage pour les colis"/>
 
                     <!--
@@ -82,8 +82,8 @@
                         </group>
                     </group>
                     <group string="Informations Colis" invisible="not colis_created">
-                    <field name="colis_codes" readonly="1"/>
-                    <field name="label_url" readonly="1" widget="url"/>
+                    <field name="colis_codes" readonly="1" invisible="1"/>
+                    <field name="label_url" readonly="1" widget="url" invisible="1"/>
                     </group>
                     <notebook>
                         <page string="Ligne de commande">
