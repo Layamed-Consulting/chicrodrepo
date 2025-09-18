@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <template id="report_order_de_virement">
+            <t t-call="web.basic_layout">
+                <t t-call="chichcorner_customization.report_order_de_virement_document"/>
+            </t>
+        </template>
+</odoo>
