@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="custom_bulettin_report" model="ir.actions.report">
+            <field name="name">Bulletin de paie</field>
+            <field name="model">hr.payslip</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">chichcorner_customization.report_bulletin_de_paie</field>
+            <field name="print_report_name">'Bulletin de paie'</field>
+            <field name="binding_view_types">form</field>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>

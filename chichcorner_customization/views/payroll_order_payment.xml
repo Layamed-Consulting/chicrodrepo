@@ -12,6 +12,11 @@
                         string="Order De Virement"
                         type="object"
                         class="btn-success"/>
+
+                <button name="action_print_bulletin_paie"
+                        string="Bulletin de paie"
+                        type="object"
+                        class="btn-success"/>
             </header>
         </field>
     </record>
