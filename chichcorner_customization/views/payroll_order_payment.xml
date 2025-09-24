@@ -18,6 +18,12 @@
                         type="object"
                         class="btn-success"/>
             </header>
+            <field name="net_wage" position="after">
+                <field name="brut_imposable" string="Brut Imposable" sum="Total Brut Imposable"/>
+                <field name="net_imposable" string="Net Imposable" sum="Total Net Imposable"/>
+                <field name="cnss_total" string="CNSS" sum="Total CNSS"/>
+                <field name="ir_brut" string="IR Brut" sum="Total IR Brut"/>
+            </field>
         </field>
     </record>
 </odoo>
