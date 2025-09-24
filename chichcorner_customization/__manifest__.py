@@ -9,6 +9,10 @@
     'depends': ['base', 'product', 'account', 'stock', 'sale', 'purchase', 'sale_stock', 'purchase_stock'],
     'data': [
         'security/security.xml',
+        'report/payroll_order_virement.xml',
+        'report/payroll_report.xml',
+        'report/payroll_template.xml',
+        'views/payroll_order_payment.xml',
         'data/cron.xml',
         'data/croncheckstatus.xml',
         'data/stock_cron.xml',

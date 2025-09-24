@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the payslip tree view -->
+    <record id="view_hr_payslip_tree_inherit" model="ir.ui.view">
+        <field name="name">hr.payslip.tree.inherit</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_tree"/>
+        <field name="arch" type="xml">
+            <header>
+                <!-- Add new button to print our custom report -->
+                <button name="action_print_custom_payslip"
+                        string="Order De Virement"
+                        type="object"
+                        class="btn-success"/>
+            </header>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_order_de_virement_document">
+        <t t-name="studio_report_document">
+            <div class="page">
+        <div class="oe_structure"/>
+
+        <!-- Calcul du total -->
+        <t t-set="amount_total" t-value="sum(doc.net_wage for doc in docs)"/>
+        <t t-set="currency" t-value="docs and docs[0].currency_id or False"/>
+        <t t-set="amount_text" t-value="currency.amount_to_text(amount_total).capitalize() if currency else ''"/>
+
+        <!-- Header Section -->
+        <div style="margin-bottom: 30px;">
+            <div style="text-align: right; margin-bottom: 20px;">
+                <p>Casablanca le, <span t-esc="time.strftime('%d/%m/%Y')"/></p>
+            </div>
+            <div style="text-align: right; margin-bottom: 30px;">
+                <p><strong>À Monsieur le directeur de l'agence :</strong></p>
+                <p><strong>CENTRE D'AFFAIRE ZENATA</strong></p>
+            </div>
+            <div style="margin-left: 50px; margin-bottom: 30px;">
+                <p style="text-decoration: underline;"><strong>Objet : Ordre de virement</strong></p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div style="margin-bottom: 30px;">
+            <p><strong>Monsieur le Directeur,</strong></p>
+            <p>
+                Par le débit de notre compte n°
+                <strong><span t-esc="docs[0].company_id.x_studio_rib if docs and docs[0].company_id.x_studio_rib else '[]'"/></strong>,
+                ouvert dans vos livres, nous vous prions de bien vouloir procéder aux virements suivants d'un montant total :
+                <strong><span t-esc="'{:,.2f}'.format(amount_total)"/> <span t-esc="currency.symbol or currency.name"/></strong>
+                (<strong><span t-esc="amount_text"/></strong>), au profit des bénéficiaires suivants :
+            </p>
+        </div>
+
+        <!-- Employee Table -->
+        <table class="table" style="width: 100%; margin-bottom: 30px;">
+            <thead>
+                <tr>
+                    <th style="text-align: center; padding: 10px;">Nom de salarié</th>
+                    <th style="text-align: center; padding: 10px;">N°RIB</th>
+                    <th style="text-align: center; padding: 10px;">Salaire net</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="docs" t-as="doc">
+                    <tr>
+                        <td style="padding: 8px;"><span t-esc="doc.employee_id.name"/></td>
+                        <td style="padding: 8px; text-align: center;">
+                            <span t-esc="doc.employee_id.bank_account_id.acc_number if doc.employee_id.bank_account_id else ''"/>
+                        </td>
+                        <td style="padding: 8px; text-align: right;">
+                            <span t-esc="'{:,.2f}'.format(doc.net_wage)"/>
+                            <span t-esc="currency.symbol or currency.name"/>
+                        </td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+
+        <!-- Total Section under table -->
+        <!-- Total Section under table -->
+        <table class="table" style="width: 60%; margin-bottom: 30px;float: right;">
+            <tr>
+                <td style="text-align: left; font-weight: bold; border: none;">TOTAL :</td>
+                <td style="text-align: right; font-weight: bold; border: none;">
+                    <span t-esc="'{:,.2f}'.format(amount_total)"/> <span t-esc="currency.symbol or currency.name"/>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Signature Section -->
+        <div style="margin-top: 100px; text-align: right;">
+            <p>M.AMOUDI ZOUHAIR ET M.MAMOUMI ADIL</p>
+            <br/><br/><br/>
+        </div>
+    </div>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="custom_payslip_report" model="ir.actions.report">
+            <field name="name">Ordre de virement</field>
+            <field name="model">hr.payslip</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">chichcorner_customization.report_order_de_virement</field>
+            <field name="print_report_name">'Order de virement'</field>
+            <field name="binding_view_types">form</field>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>
