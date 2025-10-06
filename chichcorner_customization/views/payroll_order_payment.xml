@@ -23,6 +23,8 @@
                 <field name="net_imposable" string="Net Imposable" sum="Total Net Imposable"/>
                 <field name="cnss_total" string="CNSS" sum="Total CNSS"/>
                 <field name="ir_brut" string="IR Brut" sum="Total IR Brut"/>
+                <field name="jours_travailles" string="Jours Travaillés" sum="Total Jours"/>
+                <field name="jours_conges" string="Jours Congé" sum="Total Congés"/>
             </field>
         </field>
     </record>
