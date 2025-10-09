@@ -21,8 +21,8 @@ class HrPayslip(models.Model):
             jours_travail = payslip.worked_days_line_ids.filtered(
                 lambda l: l.work_entry_type_id.code in ['WORK', 'WORK100', 'ATT']
             )
-            payslip.jours_travailles = sum(jours_travail.mapped('number_of_days'))
-
+            '''payslip.jours_travailles = sum(jours_travail.mapped('number_of_days'))'''
+            payslip.jours_travailles = 26
             # Calculer la somme des jours de congé (types LEAVE, LEAVES, etc.)
             jours_conge = payslip.worked_days_line_ids.filtered(
                 lambda l: l.work_entry_type_id.code in ['LEAVE110', 'LEAVE', 'SICK', 'COMP_LEAVE', 'LEAVE90']
