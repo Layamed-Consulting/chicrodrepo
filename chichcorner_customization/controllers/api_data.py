@@ -582,7 +582,12 @@ class PosPaymentAPI(http.Controller):
             payment_methods = {}
 
             for payment in order.payment_ids:
-                payment_methods[payment.payment_method_id.name] = payment.amount
+                method_name = payment.payment_method_id.name
+                # Add to existing amount if method already exists, otherwise create new entry
+                if method_name in payment_methods:
+                    payment_methods[method_name] += payment.amount
+                else:
+                    payment_methods[method_name] = payment.amount
 
             payment_data.append({
                 "Nom du Magasin": order.config_id.name if order.config_id else "None",
