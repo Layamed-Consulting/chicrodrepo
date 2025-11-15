@@ -546,6 +546,7 @@ class CustomerFetcher(models.TransientModel):
         today = datetime.now().date()
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
+
         # Format dates for API filter
         date_filter = f"[{yesterday},{tomorrow}]"
         orders_url = f"{self.API_BASE_URL}/orders?filter[date_add]={date_filter}&date=1"
@@ -572,12 +573,14 @@ class CustomerFetcher(models.TransientModel):
                     order_id = order.get('id')
                     href = order.get('{http://www.w3.org/1999/xlink}href')
 
+                    _logger.info("Checking Order %s: ID=%s, URL=%s", i + 1, order_id, href)
+
                     # Check if order already exists in Odoo
                     if self.env['stock.website.order'].search([('ticket_id', '=', order_id)], limit=1):
                         _logger.info("Skipping existing order ID=%s", order_id)
                         continue
 
-                    _logger.info("New Order %s: ID=%s, URL=%s", i + 1, order_id, href)
+                    # Fetch order details to check status
                     self._fetch_and_log_order_details(order_id)
 
             else:
@@ -597,11 +600,30 @@ class CustomerFetcher(models.TransientModel):
     def _fetch_and_log_order_details(self, order_id):
         order_url = f"{self.API_BASE_URL}/orders/{order_id}"
         try:
+            _logger.info("Fetching order details from: %s", order_url)
+
             # Use basic authentication here too
             response = requests.get(order_url, auth=(self.TOKEN, ''), timeout=30)
+
             if response.status_code == 200:
                 tree = ET.fromstring(response.content)
                 order = tree.find('order')
+
+                # Extract current_state - it's inside CDATA
+                current_state_elem = order.find('current_state')
+                if current_state_elem is not None:
+                    current_state = current_state_elem.text.strip() if current_state_elem.text else ''
+                    _logger.info("Order #%s has current_state: %s", order_id, current_state)
+
+                    # Check if current_state is 6
+                    if current_state != '2':
+                        _logger.info("Skipping order #%s - Status is %s (not 2)", order_id, current_state)
+                        return
+
+                    _logger.info("✓ Order #%s has status 2 - Processing...", order_id)
+                else:
+                    _logger.warning("No current_state found for order #%s - Skipping", order_id)
+                    return
 
                 customer_elem = order.find('id_customer')
                 address_delivery_elem = order.find('id_address_delivery')
@@ -662,6 +684,7 @@ class CustomerFetcher(models.TransientModel):
                         'product_id': product.id,
                         'code_barre': product_reference,
                         'product_name': product.name,
+                        'price_payed': unit_price_incl,
                         'quantity': float(quantity),
                         'discount': float(row.findtext('total_discounts', default='0.00')),
                         'price': float(price),
@@ -673,6 +696,7 @@ class CustomerFetcher(models.TransientModel):
                 _logger.info("ORDER #%s Summary:", order_id)
                 _logger.info("   Total Paid: %s MAD", total_paid)
                 _logger.info("   Payment Method: %s", payment_method)
+                _logger.info("   Status: 2 (Accepted)")
                 _logger.info("=" * 80)
 
             else:
