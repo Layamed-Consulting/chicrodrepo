@@ -98,6 +98,7 @@
                                         <field name="product_name"/>
                                         <field name="quantity"/>
                                         <field name="price"/>
+                                        <field name="price_payed"/>
                                         <!--
                                         <field name="discount"/>-->
                                         <field name="status_ligne_commande"/>
