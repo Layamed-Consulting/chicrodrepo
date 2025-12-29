@@ -10,11 +10,12 @@
                 <field name="date_commande"/>
                 <field name="client_name"/>
                 <field name="payment_method"/>
+                <field name="transportor"/>
                 <field name="status"
                        widget="badge"
                        decoration-info="status == 'initial'"
                        decoration-warning="status == 'en_cours_preparation'"
-                       decoration-success="status == 'prepare'"
+                       decoration-success="status in ('prepare', 'picked_up')"
                        decoration-bf="status == 'encourdelivraison'"
                        decoration-danger="status == 'annuler'"
                 />
@@ -32,6 +33,12 @@
                         invisible="colis_created or status in ('initial', 'en_cours_preparation','delivered','encourdelivraison','annuler')"
                         help="Créer les colis via SendIt"/>
 
+                    <button name="action_mark_picked_up"
+                        string="Colis retiré"
+                        type="object"
+                        class="btn-primary"
+                        invisible="status != 'prepare' or transportor != 'Click and collect'"
+                        help="Marquer la commande comme retirée par le client"/>
                     <button name="action_create_pickup_request" string="Demande de Ramassage" type="object" class="btn-primary"
                     invisible="not colis_created or status == 'delivered'"
                     help="Créer une demande de ramassage pour les colis"/>
@@ -66,6 +73,7 @@
                         <field name="status"/>
                         <field name="reference"/>
                         <field name="date_commande"/>
+                        <field name="transportor"/>
                     </group>
                     <group string="Détails du Client" colspan="2">
                         <group>
