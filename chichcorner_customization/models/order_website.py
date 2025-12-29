@@ -671,6 +671,7 @@ class CustomerFetcher(models.TransientModel):
                     'payment_method': payment,
                     'transportor': carrier_name,  # Add carrier name here
                 })
+                '''
                 total_shipping_str = order.findtext('total_shipping', default='0.00').strip()
                 total_shipping = float(total_shipping_str) if total_shipping_str else 0.0
                 total_red_str = order.findtext('total_discounts', default='0.00').strip()
@@ -680,6 +681,7 @@ class CustomerFetcher(models.TransientModel):
                 reduction_percent = 0.0
                 if total_global > 0:
                     reduction_percent = (total_red / total_global) * 100
+                '''
                 order_rows = order.findall('.//order_row')
                 total_amount = 0
 
@@ -706,16 +708,10 @@ class CustomerFetcher(models.TransientModel):
                         'quantity': float(quantity),
                         'discount': float(row.findtext('total_discounts', default='0.00')),
                         'price': float(price),
-                        'shipped_price': total_shipping,
-                        'reduction_total': total_red,
-                        'global_payed': total_global,
-                        'reduction_value': reduction_percent,
                     })
 
                 total_paid = order.findtext('total_paid_tax_incl', default='0.00')
                 payment_method = order.findtext('payment', default='')
-
-
             else:
                 _logger.error("Failed to fetch order details for %s, status code: %s", order_id, response.status_code)
         except Exception as e:
