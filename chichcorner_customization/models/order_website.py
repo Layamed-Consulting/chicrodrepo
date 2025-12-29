@@ -544,7 +544,7 @@ class CustomerFetcher(models.TransientModel):
 
         # Get yesterday and today dates
         today = datetime.now().date()
-        yesterday = today - timedelta(days=5)
+        yesterday = today - timedelta(days=2)
         tomorrow = today + timedelta(days=1)
 
         # Format dates for API filter
