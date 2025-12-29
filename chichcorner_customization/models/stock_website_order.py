@@ -29,6 +29,7 @@ class WebsiteOrder(models.Model):
     status = fields.Selection([
         ('initial', 'Initial'),
         ('prepare', 'Préparé'),
+        ('picked_up', 'Colis retiré'),
         ('delivered', 'Livré'),
         ('en_cours_preparation', 'En cours de préparation'),
         ('encourdelivraison', 'En cours de Livraison'),
@@ -39,6 +40,7 @@ class WebsiteOrder(models.Model):
     colis_created = fields.Boolean(string="Colis Created", default=False, help="Indicates if colis have been created via SendIt API")
     colis_codes = fields.Text(string="Colis Codes", help="Store colis codes from SendIt API (JSON format)")
     label_url = fields.Char(string="Imprimer étiquette", help="URL of the generated labels PDF")
+    transportor = fields.Char(string="Mode de livraison", readonly=True)
     '''
     def action_send_to_pos(self):
         for order in self:
@@ -94,7 +96,9 @@ class WebsiteOrder(models.Model):
     API_BASE_URL = "https://www.premiumshop.ma/api"
     WS_KEY = "E93WGT9K8726WW7F8CWIXDH9VGFBLH6A"
     '''added in 07/07/2025'''
-
+    def action_mark_picked_up(self):
+        for record in self:
+            record.status = 'picked_up'
     def _check_and_update_order_status(self):
         """Check if all order lines are cancelled and update order status accordingly"""
         for order in self:

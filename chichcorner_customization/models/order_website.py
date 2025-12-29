@@ -544,7 +544,7 @@ class CustomerFetcher(models.TransientModel):
 
         # Get yesterday and today dates
         today = datetime.now().date()
-        yesterday = today - timedelta(days=1)
+        yesterday = today - timedelta(days=5)
         tomorrow = today + timedelta(days=1)
 
         # Format dates for API filter
@@ -615,23 +615,32 @@ class CustomerFetcher(models.TransientModel):
                     current_state = current_state_elem.text.strip() if current_state_elem.text else ''
                     _logger.info("Order #%s has current_state: %s", order_id, current_state)
 
-                    # Check if current_state is 6
-                    if current_state != '2':
-                        _logger.info("Skipping order #%s - Status is %s (not 2)", order_id, current_state)
+                    # Check if current_state is 2 or 13
+                    if current_state not in ['2', '13']:
+                        _logger.info("Skipping order #%s - Status is %s (not 2 or 13)", order_id, current_state)
                         return
 
-                    _logger.info("✓ Order #%s has status 2 - Processing...", order_id)
+                    _logger.info("✓ Order #%s has status %s - Processing...", order_id, current_state)
                 else:
                     _logger.warning("No current_state found for order #%s - Skipping", order_id)
                     return
 
                 customer_elem = order.find('id_customer')
                 address_delivery_elem = order.find('id_address_delivery')
+                carrier_elem = order.find('id_carrier')
 
                 customer_url = customer_elem.attrib.get('{http://www.w3.org/1999/xlink}href')
                 address_delivery_url = address_delivery_elem.attrib.get('{http://www.w3.org/1999/xlink}href')
+                carrier_url = carrier_elem.attrib.get(
+                    '{http://www.w3.org/1999/xlink}href') if carrier_elem is not None else None
 
                 customer_details = self._get_complete_customer_details(customer_url, address_delivery_url)
+
+                # Get carrier name
+                carrier_name = ''
+                if carrier_url:
+                    carrier_name = self._get_carrier_name(carrier_url)
+                    _logger.info("Order #%s Carrier: %s", order_id, carrier_name)
 
                 # Get or create/update contact based on phone and email
                 partner = self._find_or_create_partner(customer_details)
@@ -660,8 +669,17 @@ class CustomerFetcher(models.TransientModel):
                                                            limit=1) if customer_details.get('country') else False,
                     'date_commande': date_commande,
                     'payment_method': payment,
+                    'transportor': carrier_name,  # Add carrier name here
                 })
-
+                total_shipping_str = order.findtext('total_shipping', default='0.00').strip()
+                total_shipping = float(total_shipping_str) if total_shipping_str else 0.0
+                total_red_str = order.findtext('total_discounts', default='0.00').strip()
+                total_red = float(total_red_str) if total_red_str else 0.0
+                total_global_str = order.findtext('total_paid', default='0.00').strip()
+                total_global = float(total_global_str) if total_global_str else 0.0
+                reduction_percent = 0.0
+                if total_global > 0:
+                    reduction_percent = (total_red / total_global) * 100
                 order_rows = order.findall('.//order_row')
                 total_amount = 0
 
@@ -688,21 +706,37 @@ class CustomerFetcher(models.TransientModel):
                         'quantity': float(quantity),
                         'discount': float(row.findtext('total_discounts', default='0.00')),
                         'price': float(price),
+                        'shipped_price': total_shipping,
+                        'reduction_total': total_red,
+                        'global_payed': total_global,
+                        'reduction_value': reduction_percent,
                     })
 
                 total_paid = order.findtext('total_paid_tax_incl', default='0.00')
                 payment_method = order.findtext('payment', default='')
 
-                _logger.info("ORDER #%s Summary:", order_id)
-                _logger.info("   Total Paid: %s MAD", total_paid)
-                _logger.info("   Payment Method: %s", payment_method)
-                _logger.info("   Status: 2 (Accepted)")
-                _logger.info("=" * 80)
 
             else:
                 _logger.error("Failed to fetch order details for %s, status code: %s", order_id, response.status_code)
         except Exception as e:
             _logger.exception("Exception fetching details for order %s: %s", order_id, str(e))
+
+    def _get_carrier_name(self, carrier_url):
+        """Fetch carrier name from carrier URL"""
+        try:
+            _logger.info("Fetching carrier details from: %s", carrier_url)
+            response = requests.get(carrier_url, auth=(self.TOKEN, ''), timeout=30)
+
+            if response.status_code == 200:
+                tree = ET.fromstring(response.content)
+                carrier_name = self._get_text_content(tree, './/name')
+                return carrier_name if carrier_name else ''
+            else:
+                _logger.warning("Failed to fetch carrier data from %s (status %s)", carrier_url, response.status_code)
+                return ''
+        except Exception as e:
+            _logger.exception("Exception fetching carrier data from %s: %s", carrier_url, str(e))
+            return ''
 
     def _get_complete_customer_details(self, customer_url, address_url):
         """Fetch complete customer details including address information"""
