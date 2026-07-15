@@ -48,6 +48,7 @@
         'report/sale_report.xml',
         'views/report_template.xml',
         'views/product_view_inh.xml',
+        'wizards/purchase_invoice_split_wizard_views.xml',
         #'report/print_accounting.xml',
         #'views/pos_payment_stan_view.xml',
         #'views/pos_payment_methode.xml',
