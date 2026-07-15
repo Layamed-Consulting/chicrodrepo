@@ -21,3 +21,6 @@ access_stock_website_order_manager,access_stock_website_order_manager,chichcorne
 
 access_prestashop_stock_cron_user,access_prestashop_stock_cron_user,chichcorner_customization.model_prestashop_stock_cron,,1,1,1,0
 access_prestashop_stock_cron_manager,access_prestashop_stock_cron_manager,chichcorner_customization.model_prestashop_stock_cron,base.group_erp_manager,1,1,1,1
+
+access_purchase_invoice_split_wizard,purchase.invoice.split.wizard,model_purchase_invoice_split_wizard,base.group_user,1,1,1,1
+access_purchase_invoice_split_wizard_line,purchase.invoice.split.wizard.line,model_purchase_invoice_split_wizard_line,base.group_user,1,1,1,1
