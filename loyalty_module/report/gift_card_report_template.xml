@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="gift_card_report_small_font" inherit_id="loyalty.gift_card_report">
+        <xpath expr="//img[contains(@src, 'gift_card.png')]" position="replace">
+            <img src="/loyalty_module/static/src/img/logo.png" style="display:block; border:0; outline:none; text-decoration:none; margin:auto;" width="500" height="300"/>
+        </xpath>
+    </template>
+</odoo>
