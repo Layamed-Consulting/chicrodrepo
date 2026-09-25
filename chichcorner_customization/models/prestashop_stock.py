@@ -459,71 +459,51 @@ class PrestashopStockCron(models.Model):
 
     @api.model
     def cron_monitor_stock_changes(self):
-        """
-        Cron job function that runs every 5 minutes to monitor stock changes
-        This is the main entry point for the scheduled action
-        """
-        try:
-            # Monitor stock move lines in the last 10 minutes
-            affected_products = self.get_products_from_stock_move_lines(minutes_ago=10)
+        """Monitor stock changes and sync to PrestaShop"""
+        _logger.info("=== CRON: Stock Monitor Started ===")
 
+        try:
+            affected_products = self.get_products_from_stock_move_lines()
             if affected_products:
-                # Trigger PrestaShop sync for affected products
+                _logger.info(f"CRON: {len(affected_products)} products to sync")
                 self.sync_affected_products_to_prestashop(affected_products)
             else:
-                _logger.info("CRON: No products affected by stock moves in the last 10 minutes")
-
+                _logger.info("CRON: No products to sync")
         except Exception as e:
-            _logger.error(f"CRON: Error in stock change monitor: {e}")
+            _logger.error(f"CRON Error: {e}")
 
-        _logger.info("=== CRON: Stock Change Monitor Completed ===")
+        _logger.info("=== CRON: Stock Monitor Completed ===")
         return True
 
     @api.model
-    def get_products_from_stock_move_lines(self, minutes_ago=10):
-        """
-        Get products affected by stock move lines in the last X minutes
-        Returns list of products with their current stock quantities
-        """
-        # Calculate the time threshold
+    def get_products_from_stock_move_lines(self, minutes_ago=5):
+        """Get products affected by stock moves in last X minutes"""
         time_threshold = datetime.now() - timedelta(minutes=minutes_ago)
+        time_threshold2 = datetime.now() + timedelta(minutes=minutes_ago)
 
-        # Search for stock move lines that were updated in the last X minutes
-        # We check both create_date and write_date to catch all changes
+        _logger.info(f"=== CRON: Start from : {time_threshold} to {time_threshold2}")
+        # Find recent stock move lines
         recent_move_lines = self.env['stock.move.line'].search([
-            '|',
-            ('create_date', '>=', time_threshold),
-            ('write_date', '>=', time_threshold),
-            ('product_id.default_code', '!=', False),  # Only products with EAN13
+            '|', ('create_date', '>=', time_threshold), ('write_date', '>=', time_threshold),
+            ('product_id.default_code', '!=', False),
             ('product_id.default_code', '!=', ''),
-            ('state', '=', 'done'),  # Only confirmed moves
-        ], order='write_date desc')
+            ('state', '=', 'done'),
+        ])
 
         if not recent_move_lines:
-            _logger.info("No stock move lines found in the specified time period")
             return []
-        # Get unique products from the move lines
-        product_ids = set()
-        for move_line in recent_move_lines:
-            product_ids.add(move_line.product_id.id)
 
-        # Get current stock quantities for these products
-        affected_products = []
-        for product_id in product_ids:
-            product = self.env['product.product'].browse(product_id)
-            if product and product.default_code:
-                affected_products.append({
-                    'id': product.id,
-                    'name': product.name,
-                    'ean13': product.default_code,
-                    'qty_available': product.qty_available,
-                    'write_date': product.write_date
-                })
-                _logger.info(
-                    f"Product affected: {product.name} (EAN13: {product.default_code}) - Current Stock: {product.qty_available}")
+        # Get unique products
+        product_ids = list(set(line.product_id.id for line in recent_move_lines))
+        products = self.env['product.product'].browse(product_ids)
 
-        _logger.info(f"=== END STOCK MOVE LINES MONITOR - {len(affected_products)} products to sync ===")
-        return affected_products
+        # Return product data
+        return [{
+            'id': p.id,
+            'name': p.name,
+            'ean13': p.default_code,
+            'qty_available': p.qty_available,
+        } for p in products if p.default_code]
 
     @api.model
     def log_stock_move_lines_for_product(self, ean13, minutes_ago=10):
@@ -561,166 +541,199 @@ class PrestashopStockCron(models.Model):
 
     @api.model
     def sync_affected_products_to_prestashop(self, products_list):
-        """
-        Sync specific products to PrestaShop that had stock changes
-        """
-
+        """Sync products to PrestaShop, then deactivate any parent product
+        whose combinations are all at 0 (no automatic reactivation)."""
         BASE_URL = "https://www.premiumshop.ma/api"
         WS_KEY = "E93WGT9K8726WW7F8CWIXDH9VGFBLH6A"
 
-        # Create basic auth header
-        auth_string = f"{WS_KEY}:"
-        auth_bytes = auth_string.encode('ascii')
-        auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
-        headers = {
-            'Authorization': f'Basic {auth_b64}',
-            'Content-Type': 'application/xml'
-        }
+        # Auth header
+        auth_b64 = base64.b64encode(f"{WS_KEY}:".encode()).decode()
+        headers = {'Authorization': f'Basic {auth_b64}', 'Content-Type': 'application/xml'}
 
-        def get_xml(url):
+        def api_request(method, url, data=None):
             try:
-                resp = requests.get(url, headers=headers, timeout=30)
-                if resp.status_code != 200:
-                    _logger.warning(f"GET failed: {url} | Status: {resp.status_code}")
+                resp = requests.request(method, url, headers=headers, data=data, timeout=50)
+                if resp.status_code in (200, 201):
+                    return ET.fromstring(resp.content)
+                else:
+                    _logger.warning(
+                        f"API request FAILED [{method} {url}] status={resp.status_code} "
+                        f"body={resp.content[:1000]!r}"
+                    )
                     return None
-                return ET.fromstring(resp.content)
             except Exception as e:
-                _logger.warning(f"Exception during GET: {url} | Error: {e}")
+                _logger.warning(f"API request exception [{method} {url}]: {e}", exc_info=True)
                 return None
 
-        def put_xml(url, data):
-            try:
-                resp = requests.put(url, data=data, headers=headers, timeout=30)
-                if resp.status_code not in (200, 201):
-                    _logger.warning(f"PUT failed: {url} | Status: {resp.status_code}")
-                    return None
-                return resp
-            except Exception as e:
-                _logger.warning(f"Exception during PUT: {url} | Error: {e}")
+        def update_stock(ean13, new_qty):
+            """Update stock for EAN13, return the PrestaShop id_product it belongs to (or None)"""
+            # Search combinations
+            search_url = f"{BASE_URL}/combinations?filter[ean13]={ean13}&display=full"
+            combinations_root = api_request('GET', search_url)
+
+            if not combinations_root:
                 return None
 
-        def search_and_update_combination_stock(ean13, new_quantity):
-            """Search for combination by EAN13 and update its stock directly"""
-            try:
-                # Step 1: Search for combinations by EAN13
-                search_url = f"{BASE_URL}/combinations?filter[ean13]={ean13}&display=full"
-                _logger.info(f"Searching combinations: {search_url}")
-                combinations_root = get_xml(search_url)
+            combinations = combinations_root.findall('.//combination')
+            if not combinations:
+                return None
 
-                if combinations_root is None:
-                    _logger.warning(f"Failed to get combinations response for EAN13 {ean13}")
-                    return False
+            combination_id = combinations[0].find('.//id').text.strip()
 
-                # Check if any combinations were found
-                combinations = combinations_root.findall('.//combination')
-                if not combinations:
-                    _logger.warning(f"No combinations found for EAN13 {ean13}")
-                    return False
+            id_product_node = combinations[0].find('.//id_product')
+            id_product = id_product_node.text.strip() if id_product_node is not None else None
 
-                # Get the first combination
-                combination = combinations[0]
+            # Get stock_available
+            stock_url = f"{BASE_URL}/stock_availables?filter[id_product_attribute]={combination_id}&display=full"
+            stock_root = api_request('GET', stock_url)
 
-                # Extract the combination ID
-                combination_id_elem = combination.find('.//id')
-                if combination_id_elem is None:
-                    _logger.warning(f"No combination ID found for EAN13 {ean13}")
-                    return False
+            if not stock_root:
+                return id_product
 
-                combination_id = combination_id_elem.text.strip()
+            stock_availables = stock_root.findall('.//stock_available')
+            if not stock_availables:
+                return id_product
 
-                # Step 2: Get stock_available by combination ID
-                stock_search_url = f"{BASE_URL}/stock_availables?filter[id_product_attribute]={combination_id}&display=full"
-                stock_root = get_xml(stock_search_url)
+            # Update each stock_available
+            updated = False
+            for stock_elem in stock_availables:
+                stock_id = stock_elem.find('.//id').text.strip()
 
-                if stock_root is None:
-                    _logger.warning(f"Failed to get stock_availables for combination ID {combination_id}")
-                    return False
+                # Get full details and update
+                detail_url = f"{BASE_URL}/stock_availables/{stock_id}"
+                detail = api_request('GET', detail_url)
 
-                # Find stock_available elements
-                stock_availables = stock_root.findall('.//stock_available')
-                if not stock_availables:
-                    _logger.warning(f"No stock_availables found for combination ID {combination_id}")
-                    return False
+                if detail:
+                    stock_node = detail.find('stock_available')
+                    qty_node = stock_node.find('quantity')
+                    if qty_node is not None:
+                        qty_node.text = str(int(new_qty))
 
-                updated_count = 0
-
-                # Step 3: Update each stock_available
-                for stock_available_elem in stock_availables:
-                    stock_id_elem = stock_available_elem.find('.//id')
-                    if stock_id_elem is None:
-                        continue
-
-                    stock_id = stock_id_elem.text.strip()
-
-                    # Get current quantity for logging
-                    current_qty_elem = stock_available_elem.find('.//quantity')
-                    old_qty = current_qty_elem.text if current_qty_elem is not None else "unknown"
-
-                    _logger.info(f"Updating stock_available ID {stock_id} for combination {combination_id}")
-
-                    # Get the full stock_available details for update
-                    stock_detail_url = f"{BASE_URL}/stock_availables/{stock_id}"
-                    stock_detail = get_xml(stock_detail_url)
-
-                    if stock_detail is None:
-                        _logger.warning(f"Failed to get stock_available details for ID {stock_id}")
-                        continue
-
-                    stock_available_node = stock_detail.find('stock_available')
-                    if stock_available_node is None:
-                        continue
-
-                    # Update quantity
-                    quantity_node = stock_available_node.find('quantity')
-                    if quantity_node is not None:
-                        quantity_node.text = str(int(new_quantity))
-
-                        # Prepare update XML
+                        # Prepare XML
                         updated_doc = ET.Element('prestashop', xmlns_xlink="http://www.w3.org/1999/xlink")
-                        updated_doc.append(stock_available_node)
-                        updated_data = ET.tostring(updated_doc, encoding='utf-8', xml_declaration=True)
+                        updated_doc.append(stock_node)
+                        xml_data = ET.tostring(updated_doc, encoding='utf-8', xml_declaration=True)
 
                         # Send update
-                        response = put_xml(stock_detail_url, updated_data)
+                        if api_request('PUT', detail_url, xml_data):
+                            _logger.info(f"✔ Updated stock for EAN13 {ean13}: {new_qty}")
+                            updated = True
 
-                        if response and response.status_code in (200, 201):
-                            _logger.info(
-                                f"✔ PRESTASHOP SYNC: Updated stock_available {stock_id} for EAN13 {ean13} (combination {combination_id}): {old_qty} → {int(new_quantity)}")
-                            updated_count += 1
-                        else:
-                            _logger.warning(f"Failed to update stock_available {stock_id}")
+                time.sleep(0.1)  # Small delay
 
-                    # Small delay between updates
-                    time.sleep(0.1)
+            return id_product if updated else id_product
 
-                return updated_count > 0
+        def get_total_quantity_for_product(id_product):
+            """Get total quantity for a product: sum every <quantity> value
+            returned by stock_availables?filter[id_product]=X"""
+            url = f"{BASE_URL}/stock_availables?filter[id_product]={id_product}&display=full"
+            _logger.info(f"STEP2: fetching stock_availables for id_product={id_product} -> {url}")
+            root = api_request('GET', url)
+            if not root:
+                _logger.warning(f"STEP2: no response / failed to parse XML for id_product={id_product}")
+                return None
 
-            except Exception as e:
-                _logger.error(f"Error processing combination for EAN13 {ean13}: {e}")
+            total = 0
+            found_any = False
+            for qty_node in root.findall('.//quantity'):
+                if qty_node.text is not None:
+                    found_any = True
+                    total += int(qty_node.text.strip())
+
+            _logger.info(f"STEP2: id_product={id_product} total_quantity={total if found_any else 'N/A'}")
+            return total if found_any else None
+
+        def set_product_active_state(id_product, active):
+            """Set the 'active' flag on a PrestaShop product.
+            - Skips the PUT if the product already has the expected value.
+            - Keeps the FULL root document returned by GET, mutates only the
+              target node in place, and PUTs the whole tree back, except for
+              a few fields PrestaShop's webservice rejects on write.
+            - If the PUT returns an error (often HTTP 500 caused by PHP 8.2
+              deprecation notices even though the write succeeded), verifies
+              the real state with a GET before reporting failure."""
+            detail_url = f"{BASE_URL}/products/{id_product}"
+            expected = '1' if active else '0'
+
+            _logger.info(f"STEP2: fetching product detail for id_product={id_product}")
+            root = api_request('GET', detail_url)
+            if root is None:
+                _logger.warning(f"STEP2: failed to GET product {id_product} before update")
                 return False
 
-        sync_success = 0
-        sync_failed = 0
+            product_node = root.find('.//product')
+            if product_node is None:
+                _logger.warning(f"STEP2: no <product> node found for id_product={id_product}")
+                return False
 
-        for product_info in products_list:
+            # Already in the expected state -> nothing to do
+            active_node = product_node.find('active')
+            if active_node is not None and (active_node.text or '').strip() == expected:
+                _logger.info(f"STEP2: product {id_product} already active={active}, nothing to do")
+                return True
+
+            # Fields PrestaShop rejects on PUT for this shop (error 93 / error 135)
+            for tag in ('manufacturer_name', 'position_in_category', 'quantity'):
+                node = product_node.find(tag)
+                if node is not None:
+                    product_node.remove(node)
+
+            if active_node is None:
+                active_node = ET.SubElement(product_node, 'active')
+            active_node.text = expected
+
+            updated_xml = ET.tostring(root, encoding='utf-8', method='xml')
+
+            result = api_request('PUT', detail_url, updated_xml)
+            if result is not None:
+                _logger.info(f"STEP2: PUT product {id_product} active={active} -> OK")
+                return True
+
+            # PUT returned an error -> check the real state on PrestaShop
+            verify_root = api_request('GET', detail_url)
+            if verify_root is not None:
+                verify_node = verify_root.find('.//product/active')
+                if verify_node is not None and (verify_node.text or '').strip() == expected:
+                    _logger.info(
+                        f"STEP2: PUT product {id_product} returned an error but "
+                        f"active={active} is confirmed on PrestaShop -> OK"
+                    )
+                    return True
+
+            _logger.warning(f"STEP2: PUT product {id_product} active={active} -> FAILED")
+            return False
+
+        # --- Step 1: update stock for every combination, collect touched products ---
+        success_count = 0
+        touched_product_ids = set()
+
+        for product in products_list:
             try:
-                ean13 = product_info['ean13']
-                new_qty = product_info['qty_available']
-
-                # Search for combination and update stock directly
-                success = search_and_update_combination_stock(ean13, new_qty)
-
-                if success:
-                    sync_success += 1
-                else:
-                    _logger.warning(f"PRESTASHOP SYNC: Failed to update stock for EAN13 {ean13}")
-                    sync_failed += 1
-
-                # Small delay between products
+                id_product = update_stock(product['ean13'], product['qty_available'])
+                if id_product:
+                    success_count += 1
+                    touched_product_ids.add(id_product)
                 time.sleep(0.2)
-
             except Exception as e:
-                _logger.error(f"PRESTASHOP SYNC: Error processing {product_info.get('ean13', 'unknown')}: {e}")
-                sync_failed += 1
+                _logger.error(f"Error syncing {product.get('ean13')}: {e}", exc_info=True)
+
+        _logger.info(f"SYNC SUMMARY: {success_count}/{len(products_list)} products synced")
+        _logger.info(f"STEP2: products to check for deactivation: {touched_product_ids}")
+
+        # --- Step 2: for each touched parent product, deactivate if total stock is 0 ---
+        # (no auto-reactivation here — reactivating a product is left manual)
+        for id_product in touched_product_ids:
+            try:
+                total_qty = get_total_quantity_for_product(id_product)
+                if total_qty is None:
+                    _logger.warning(f"STEP2: could not determine quantity for id_product={id_product}, skipping")
+                    continue
+
+                if total_qty <= 0:
+                    set_product_active_state(id_product, active=False)
+                else:
+                    _logger.info(f"STEP2: id_product={id_product} still has stock ({total_qty}), leaving active")
+            except Exception as e:
+                _logger.error(f"STEP2: error checking/deactivating product {id_product}: {e}", exc_info=True)
 
         return True
